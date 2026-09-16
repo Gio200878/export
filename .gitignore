@@ -28,3 +28,8 @@ dist-ssr
 !.dev.vars.example
 .env*
 !.env.example
+
+# Dati clienti sensibili (non versionati)
+clienti_attivi_258.csv
+clienti_geocodificati.csv
+clienti*.csv
