@@ -48,6 +48,12 @@
     font-size: 13px;
     color: #6b7280;
   }
+  .hemi-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .hemi-link:hover { text-decoration: underline; }
   .layout {
     display: flex;
     align-items: stretch;
@@ -59,15 +65,17 @@
     height: 100%;
     min-width: 0;
   }
-  #legend {
+  #legend, #legendCerchi {
     flex: 0 0 280px;
     width: 280px;
     padding: 16px 18px 16px;
     overflow-y: auto;
-    border-right: 1px solid var(--line);
     background: #fff;
   }
-  #legend h2 {
+  #legend { border-right: 1px solid var(--line); }
+  #legendCerchi { border-left: 1px solid var(--line); }
+  #legendCerchi.hidden { display: none; }
+  #legend h2, #legendCerchi h2 {
     font-size: 13px;
     text-transform: none;
     font-weight: 650;
@@ -176,7 +184,7 @@
 
 <header>
   <h1>Clienti attivi da inizio anno</h1>
-  <div class="meta">258 clienti &middot; colore per agente &middot; clicca un punto per il dettaglio fatturato</div>
+  <div class="meta">258 clienti &middot; colore per agente &middot; clicca un punto per il dettaglio fatturato &middot; <a href="HEMI.html" target="_blank" class="hemi-link">configura cerchi &rarr;</a></div>
 </header>
 
 <div class="layout">
@@ -186,6 +194,11 @@
     <div class="legend-hint">Clicca una o più voci per isolare sulla mappa i clienti di quegli agenti (clic multiplo per confrontarli).</div>
   </aside>
   <div id="map"></div>
+  <aside id="legendCerchi" class="hidden">
+    <h2>Legenda &mdash; cerchi</h2>
+    <div class="legend-grid" id="legendGridCerchi"></div>
+    <div class="legend-hint">Clicca una o più voci per mostrare solo quei cerchi (clic multiplo per confrontarli).</div>
+  </aside>
 </div>
 
 <script>
@@ -222,22 +235,60 @@ L.gridLayer.googleMutant({
 }).addTo(map);
 setTimeout(() => map.invalidateSize(), 0);
 
-// prova: cerchi semitrasparenti raggio 100km da Firenze e Milano
-L.circle([43.7696, 11.2558], {
-  radius: 100000,
-  color: '#c0392b',
-  weight: 1.5,
-  fillColor: '#c0392b',
-  fillOpacity: 0.15
-}).addTo(map).bindTooltip('Firenze — raggio 100 km');
+// cerchi configurabili (vedi HEMI.html), caricati da cerchi.json se presente
+fetch('cerchi.json', { cache: 'no-store' })
+  .then(r => r.ok ? r.json() : [])
+  .catch(() => [])
+  .then(lista => {
+    if (!Array.isArray(lista) || lista.length === 0) return;
 
-L.circle([45.4642, 9.19], {
-  radius: 100000,
-  color: '#2980b9',
-  weight: 1.5,
-  fillColor: '#2980b9',
-  fillOpacity: 0.15
-}).addTo(map).bindTooltip('Milano — raggio 100 km');
+    const legendCerchiEl = document.getElementById('legendCerchi');
+    const legendGridCerchi = document.getElementById('legendGridCerchi');
+    legendCerchiEl.classList.remove('hidden');
+
+    const circleLayers = {};
+    const activeCircleIds = new Set();
+
+    function setDimCerchi() {
+      const anySelected = activeCircleIds.size > 0;
+      document.querySelectorAll('#legendGridCerchi .legend-item').forEach(el => {
+        const isActive = activeCircleIds.has(el.dataset.id);
+        el.classList.toggle('active', isActive);
+        el.classList.toggle('dim', anySelected && !isActive);
+      });
+      Object.entries(circleLayers).forEach(([id, layer]) => {
+        const show = !anySelected || activeCircleIds.has(id);
+        if (show) { if (!map.hasLayer(layer)) layer.addTo(map); }
+        else { if (map.hasLayer(layer)) map.removeLayer(layer); }
+      });
+    }
+
+    lista.forEach(c => {
+      const layer = L.circle([c.lat, c.lng], {
+        radius: (c.raggio_km || 100) * 1000,
+        color: c.colore || '#c0392b',
+        weight: 1.5,
+        fillColor: c.colore || '#c0392b',
+        fillOpacity: c.opacita != null ? c.opacita : 0.15
+      }).bindTooltip(`${c.nome} — raggio ${c.raggio_km || 100} km`);
+      layer.addTo(map);
+      circleLayers[c.id] = layer;
+
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.dataset.id = c.id;
+      item.innerHTML = `<span class="swatch" style="background:${c.colore}"></span>
+        <span class="label">
+          <span class="name">${c.nome}</span>
+          <span class="count">${c.citta} &middot; ${c.raggio_km || 100} km</span>
+        </span>`;
+      item.addEventListener('click', () => {
+        if (activeCircleIds.has(c.id)) activeCircleIds.delete(c.id); else activeCircleIds.add(c.id);
+        setDimCerchi();
+      });
+      legendGridCerchi.appendChild(item);
+    });
+  });
 
 const markersByCode = {};
 const allMarkers = [];
