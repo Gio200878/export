@@ -148,10 +148,10 @@ def calcola_clienti(righe, cache):
         log("Geocodificali con geocodifica_indirizzi.html e aggiungili a clienti_geocodificati.csv, poi rilancia.")
         log("")
 
-    return clients
+    return clients, data_max
 
 
-def aggiorna_html(clients, html_path):
+def aggiorna_html(clients, data_max, html_path):
     html = html_path.read_text(encoding="utf-8")
     m = re.search(r"const CLIENTS = (\[.*?\]);\n", html, re.S)
     if not m:
@@ -160,8 +160,15 @@ def aggiorna_html(clients, html_path):
     nuovo_json = json.dumps(clients, ensure_ascii=False, separators=(", ", ": "))
     nuovo_html = html[:m.start(1)] + nuovo_json + html[m.end(1):]
 
-    meta_pattern = re.compile(r"(\d+) clienti &middot; colore per agente")
-    nuovo_html = meta_pattern.sub(f"{len(clients)} clienti &middot; colore per agente", nuovo_html)
+    data_str = data_max.strftime("%d/%m/%Y")
+    meta_pattern = re.compile(r"\d+ clienti &middot; dati aggiornati al \d{2}/\d{2}/\d{4}")
+    nuova_meta = f"{len(clients)} clienti &middot; dati aggiornati al {data_str}"
+    if not meta_pattern.search(nuovo_html):
+        raise SystemExit(
+            "Non trovo la riga 'N clienti · dati aggiornati al gg/mm/aaaa' nel template: "
+            "mappa_clienti_italia.html locale e' una versione vecchia, sostituiscila con l'ultima ricevuta"
+        )
+    nuovo_html = meta_pattern.sub(nuova_meta, nuovo_html)
 
     html_path.write_text(nuovo_html, encoding="utf-8")
 
@@ -177,9 +184,9 @@ def main():
     if not cache:
         log(f"ATTENZIONE: cache coordinate {CACHE_CSV} vuota o assente, nessun cliente verra' mostrato")
 
-    clients = calcola_clienti(righe, cache)
-    aggiorna_html(clients, MAPPA_HTML)
-    log(f"OK: mappa_clienti_italia.html aggiornata con {len(clients)} clienti")
+    clients, data_max = calcola_clienti(righe, cache)
+    aggiorna_html(clients, data_max, MAPPA_HTML)
+    log(f"OK: mappa_clienti_italia.html aggiornata con {len(clients)} clienti (dati al {data_max.strftime('%d/%m/%Y')})")
 
 
 if __name__ == "__main__":
