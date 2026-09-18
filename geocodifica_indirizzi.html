@@ -149,13 +149,25 @@ document.getElementById('csvfile').addEventListener('change', (e) => {
 function buildAddress(row) {
   const via = row['Indirizzo'] || '';
   const cap = (row['CAP'] || '').trim();
-  const citta = row['Citta'] || row['Città'] || '';
-  const prov = row['Provincia'] || '';
-  return [via, cap, citta, prov, 'Italia'].filter(Boolean).join(', ');
+  let citta = row['Citta'] || row['Città'] || '';
+  let prov = row['Provincia'] || '';
+  let paese = 'Italia';
+
+  // clienti esteri: "CITTA - PAESE" nel campo Citta, es. "LUGANO - SVIZZERA"
+  const m = citta.match(/^(.*?)\s*-\s*(SVIZZERA|FRANCIA|SAN MARINO|AUSTRIA|SLOVENIA|GERMANIA|SPAGNA)\s*$/i);
+  if (m) {
+    citta = m[1].trim();
+    paese = m[2].trim();
+    prov = ''; // il codice provincia italiano (es. "EE") non ha senso all'estero
+  }
+
+  return { indirizzo: [via, cap, citta, prov, paese].filter(Boolean).join(', '), paese };
 }
 
-function geocodeOne(address, apiKey) {
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=it&key=${apiKey}`;
+function geocodeOne(addressObj, apiKey) {
+  const address = addressObj.indirizzo;
+  const regionParam = addressObj.paese === 'Italia' ? '&region=it' : '';
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}${regionParam}&key=${apiKey}`;
   return fetch(url).then(r => r.json()).then(data => {
     if (data.status === 'OK' && data.results.length > 0) {
       const loc = data.results[0].geometry.location;
@@ -182,8 +194,9 @@ document.getElementById('startBtn').addEventListener('click', async () => {
   tbody.innerHTML = '';
 
   for (const row of rows) {
-    const address = buildAddress(row);
-    const result = await geocodeOne(address, apiKey);
+    const addressObj = buildAddress(row);
+    const address = addressObj.indirizzo;
+    const result = await geocodeOne(addressObj, apiKey);
     done++;
     if (result.ok) { ok++; } else { err++; }
     geocoded.push({ row, address, result });
