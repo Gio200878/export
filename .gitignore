@@ -28,3 +28,11 @@ dist-ssr
 !.dev.vars.example
 .env*
 !.env.example
+
+__pycache__/
+*.pyc
+
+# Dati clienti sensibili (non versionati)
+clienti_attivi_258.csv
+clienti_geocodificati.csv
+clienti*.csv
