@@ -222,6 +222,23 @@ L.gridLayer.googleMutant({
 }).addTo(map);
 setTimeout(() => map.invalidateSize(), 0);
 
+// prova: cerchi semitrasparenti raggio 100km da Firenze e Milano
+L.circle([43.7696, 11.2558], {
+  radius: 100000,
+  color: '#c0392b',
+  weight: 1.5,
+  fillColor: '#c0392b',
+  fillOpacity: 0.15
+}).addTo(map).bindTooltip('Firenze — raggio 100 km');
+
+L.circle([45.4642, 9.19], {
+  radius: 100000,
+  color: '#2980b9',
+  weight: 1.5,
+  fillColor: '#2980b9',
+  fillOpacity: 0.15
+}).addTo(map).bindTooltip('Milano — raggio 100 km');
+
 const markersByCode = {};
 const allMarkers = [];
 
