@@ -41,12 +41,23 @@
     font-size: 13px;
     color: #6b7280;
   }
-  #map {
-    width: 100%;
+  .layout {
+    display: flex;
+    align-items: stretch;
     height: 640px;
   }
+  #map {
+    flex: 1 1 auto;
+    height: 100%;
+    min-width: 0;
+  }
   #legend {
-    padding: 16px 24px 22px;
+    flex: 0 0 280px;
+    width: 280px;
+    padding: 16px 18px 16px;
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+    background: #fff;
   }
   #legend h2 {
     font-size: 13px;
@@ -56,23 +67,28 @@
     color: var(--ink);
   }
   .legend-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 6px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
   }
   .legend-item {
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    padding: 4px 6px;
+    padding: 6px 8px;
     border-radius: 6px;
     cursor: pointer;
     user-select: none;
-    transition: background 0.12s ease;
+    border: 1px solid transparent;
+    transition: background 0.12s ease, border-color 0.12s ease;
   }
   .legend-item:hover { background: rgba(0,0,0,0.04); }
   .legend-item.dim { opacity: 0.35; }
+  .legend-item.active {
+    background: #e7efec;
+    border-color: var(--accent);
+  }
   .swatch {
     width: 12px;
     height: 12px;
@@ -80,14 +96,24 @@
     flex: 0 0 auto;
     border: 1px solid rgba(0,0,0,0.15);
   }
+  .legend-item .label {
+    flex: 1 1 auto;
+    min-width: 0;
+    line-height: 1.25;
+  }
+  .legend-item .name {
+    display: block;
+  }
   .legend-item .count {
+    display: block;
     color: #6b7280;
     font-variant-numeric: tabular-nums;
+    font-size: 11.5px;
   }
   .legend-hint {
     font-size: 12px;
     color: #8a8f98;
-    margin-top: 10px;
+    margin-top: 12px;
   }
   .leaflet-popup-content-wrapper {
     border-radius: 10px;
@@ -145,12 +171,13 @@
   <div class="meta">258 clienti &middot; colore per agente &middot; clicca un punto per il dettaglio fatturato</div>
 </header>
 
-<div id="map"></div>
-
-<div id="legend">
-  <h2>Legenda &mdash; agente</h2>
-  <div class="legend-grid" id="legendGrid"></div>
-  <div class="legend-hint">Clicca una voce della legenda per isolare i clienti di quel codice sulla mappa.</div>
+<div class="layout">
+  <aside id="legend">
+    <h2>Legenda &mdash; agente</h2>
+    <div class="legend-grid" id="legendGrid"></div>
+    <div class="legend-hint">Clicca una o più voci per isolare sulla mappa i clienti di quegli agenti (clic multiplo per confrontarli).</div>
+  </aside>
+  <div id="map"></div>
 </div>
 
 <script>
@@ -184,6 +211,7 @@ L.gridLayer.googleMutant({
   type: 'roadmap',
   maxZoom: 20
 }).addTo(map);
+setTimeout(() => map.invalidateSize(), 0);
 
 const markersByCode = {};
 const allMarkers = [];
@@ -228,20 +256,26 @@ CLIENTS.forEach(c => {
 
 // legenda
 const counts = {};
-CLIENTS.forEach(c => counts[c.hm2i] = (counts[c.hm2i]||0) + 1);
-const codes = Object.keys(COLORS).sort((a,b) => counts[b] - counts[a] - (counts[a]?0:0) || 0);
-const sortedCodes = Object.keys(COLORS).sort((a,b) => (counts[b]||0) - (counts[a]||0));
+const totals = {};
+CLIENTS.forEach(c => {
+  counts[c.hm2i] = (counts[c.hm2i]||0) + 1;
+  totals[c.hm2i] = (totals[c.hm2i]||0) + c.totale;
+});
+const sortedCodes = Object.keys(COLORS).sort((a,b) => (totals[b]||0) - (totals[a]||0));
 
 const legendGrid = document.getElementById('legendGrid');
-let activeCode = null;
+const activeCodes = new Set();
 
 function setDim() {
+  const anySelected = activeCodes.size > 0;
   document.querySelectorAll('.legend-item').forEach(el => {
-    el.classList.toggle('dim', activeCode !== null && el.dataset.code !== activeCode);
+    const isActive = activeCodes.has(el.dataset.code);
+    el.classList.toggle('active', isActive);
+    el.classList.toggle('dim', anySelected && !isActive);
   });
   Object.entries(markersByCode).forEach(([code, markers]) => {
+    const show = !anySelected || activeCodes.has(code);
     markers.forEach(m => {
-      const show = activeCode === null || activeCode === code;
       const el = m.getElement();
       if (el) el.style.display = show ? '' : 'none';
     });
@@ -253,10 +287,12 @@ sortedCodes.forEach(code => {
   item.className = 'legend-item';
   item.dataset.code = code;
   item.innerHTML = `<span class="swatch" style="background:${COLORS[code]}"></span>
-    <span>${agenteLabel(code)}</span>
-    <span class="count">${counts[code] || 0}</span>`;
+    <span class="label">
+      <span class="name">${agenteLabel(code)}</span>
+      <span class="count">${counts[code] || 0} clienti &middot; ${fmtEUR(totals[code] || 0)}</span>
+    </span>`;
   item.addEventListener('click', () => {
-    activeCode = (activeCode === code) ? null : code;
+    if (activeCodes.has(code)) activeCodes.delete(code); else activeCodes.add(code);
     setDim();
   });
   legendGrid.appendChild(item);
