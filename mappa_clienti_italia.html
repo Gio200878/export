@@ -258,7 +258,7 @@ fetch('cerchi.json', { cache: 'no-store' })
       });
       Object.entries(circleLayers).forEach(([id, layer]) => {
         const show = !anySelected || activeCircleIds.has(id);
-        if (show) { if (!map.hasLayer(layer)) layer.addTo(map); }
+        if (show) { if (!map.hasLayer(layer)) { layer.addTo(map); layer.bringToBack(); } }
         else { if (map.hasLayer(layer)) map.removeLayer(layer); }
       });
     }
@@ -272,6 +272,7 @@ fetch('cerchi.json', { cache: 'no-store' })
         fillOpacity: c.opacita != null ? c.opacita : 0.15
       }).bindTooltip(`${c.nome} — raggio ${c.raggio_km || 100} km`);
       layer.addTo(map);
+      layer.bringToBack();
       circleLayers[c.id] = layer;
 
       const item = document.createElement('div');
