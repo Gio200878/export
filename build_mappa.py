@@ -7,18 +7,19 @@ e dalla cache di geocodifica clienti_geocodificati.csv.
 Da lanciare nella cartella EXPORT, dopo che pubblica_report.bat ha copiato
 corpo_export_aggregato_mese.csv in corpo.csv. Non tocca gli altri report.
 
-Logica (identica a quella usata per la prima versione della mappa):
-  1. Attivi ultimi 12 mesi: righe di corpo.csv con UltimaData >= (data piu'
-     recente nel file - 365 giorni).
+Logica:
+  1. Periodo: dal 1 gennaio dell'anno della data piu' recente nel file, fino
+     a quella data (anno in corso, "year to date"). Si azzera quindi ogni
+     1 gennaio.
   2. Fatturato per linea (SottoFam) aggregato per Cod_cliente sulle sole
-     righe entro i 12 mesi.
-  3. Esclusi i clienti con fatturato totale 12 mesi < SOGLIA_FATTURATO.
+     righe entro il periodo.
+  3. Esclusi i clienti con fatturato totale del periodo < SOGLIA_FATTURATO.
   4. Nome/citta'/provincia/coordinate presi dalla cache clienti_geocodificati.csv
      (chiave Cod_cliente). Un cliente attivo ma assente dalla cache viene
      escluso dalla mappa e segnalato a schermo (va geocodificato a mano con
      geocodifica_indirizzi.html e aggiunto alla cache).
   5. Il codice HM2I usato e' quello della riga piu' recente del cliente
-     entro la finestra dei 12 mesi (l'agente puo' cambiare nel tempo).
+     entro il periodo (l'agente puo' cambiare nel tempo).
 """
 
 import csv
@@ -34,7 +35,6 @@ CACHE_CSV = EXPORT_DIR / "clienti_geocodificati.csv"
 MAPPA_HTML = EXPORT_DIR / "mappa_clienti_italia.html"
 
 SOGLIA_FATTURATO = 880.0
-GIORNI_FINESTRA = 365
 
 
 def log(msg):
@@ -100,9 +100,9 @@ def calcola_clienti(righe, cache):
         raise SystemExit("corpo.csv vuoto o non leggibile: nessuna riga valida trovata")
 
     data_max = max(r["data"] for r in righe)
-    finestra_inizio = data_max - datetime.timedelta(days=GIORNI_FINESTRA)
+    finestra_inizio = datetime.date(data_max.year, 1, 1)
     log(f"Data piu' recente nei dati: {data_max.isoformat()}")
-    log(f"Finestra 12 mesi: dal {finestra_inizio.isoformat()} al {data_max.isoformat()}")
+    log(f"Periodo (1 gennaio - oggi): dal {finestra_inizio.isoformat()} al {data_max.isoformat()}")
 
     per_cliente = {}
     for r in righe:
@@ -143,7 +143,7 @@ def calcola_clienti(righe, cache):
         log("")
         log(f"ATTENZIONE: {len(mancanti_cache)} cliente/i attivo/i ma senza coordinate in cache, esclusi dalla mappa:")
         for cod, tot in mancanti_cache:
-            log(f"  - Cod_cliente {cod}  (fatturato 12 mesi: {tot:.2f} EUR)")
+            log(f"  - Cod_cliente {cod}  (fatturato da inizio anno: {tot:.2f} EUR)")
         log("Geocodificali con geocodifica_indirizzi.html e aggiungili a clienti_geocodificati.csv, poi rilancia.")
         log("")
 

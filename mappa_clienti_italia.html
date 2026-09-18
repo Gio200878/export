@@ -175,7 +175,7 @@
 <body>
 
 <header>
-  <h1>Clienti attivi negli ultimi 12 mesi</h1>
+  <h1>Clienti attivi da inizio anno</h1>
   <div class="meta">258 clienti &middot; colore per agente &middot; clicca un punto per il dettaglio fatturato</div>
 </header>
 
@@ -243,7 +243,7 @@ function popupHTML(c) {
     <div class="popup-title">${c.nome}</div>
     <div class="popup-sub">${c.citta} (${c.prov}) &middot; ${agenteLabel(c.hm2i)}</div>
     <table class="popup-lines">${rows}</table>
-    <div class="popup-total">Totale ultimi 12 mesi &nbsp; ${fmtEUR(c.totale)}</div>
+    <div class="popup-total">Totale da inizio anno &nbsp; ${fmtEUR(c.totale)}</div>
   `;
 }
 
