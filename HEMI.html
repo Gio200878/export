@@ -190,8 +190,18 @@
 
   <div class="card">
     <h2>Salvataggio</h2>
-    <p class="sub" style="margin-bottom:12px;">Scarica il file e caricalo via FTP accanto a <code>mappa_clienti_italia.html</code>, sostituendo l'eventuale <code>cerchi.json</code> esistente.</p>
-    <button id="downloadBtn">Scarica cerchi.json</button>
+    <p class="sub" style="margin-bottom:12px;">Con <code>salva_cerchi.php</code> caricato sul sito (stessa cartella), salva direttamente sul server: niente download, niente FTP.</p>
+    <div class="grid" style="margin-bottom:10px;">
+      <div class="full">
+        <label>Password di salvataggio</label>
+        <input type="text" id="fPassword" placeholder="quella impostata in salva_cerchi.php">
+      </div>
+    </div>
+    <div class="row-actions">
+      <button id="saveServerBtn">Salva sul server</button>
+      <button id="downloadBtn" class="secondary">Scarica cerchi.json (backup / senza PHP)</button>
+    </div>
+    <div id="saveStatus" class="hidden" style="margin-top:12px;"></div>
   </div>
 </div>
 
@@ -370,7 +380,39 @@ document.getElementById('addBtn').addEventListener('click', async () => {
   }
   render();
   resetForm();
-  setStatus(`Cerchio "${nome}" salvato in elenco. Ricorda di scaricare cerchi.json per pubblicarlo.`, true);
+  setStatus(`Cerchio "${nome}" salvato in elenco. Usa "Salva sul server" (o scarica cerchi.json) per pubblicarlo.`, true);
+});
+
+function setSaveStatus(msg, ok) {
+  const el = document.getElementById('saveStatus');
+  el.textContent = msg;
+  el.className = ok ? 'ok' : 'err';
+}
+
+document.getElementById('saveServerBtn').addEventListener('click', async () => {
+  const token = document.getElementById('fPassword').value;
+  if (!token) {
+    setSaveStatus('Inserisci la password di salvataggio (quella impostata in salva_cerchi.php).', false);
+    return;
+  }
+  const btn = document.getElementById('saveServerBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('salva_cerchi.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, cerchi })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setSaveStatus(`Salvato sul server: ${data.scritti} cerchi pubblicati su cerchi.json.`, true);
+    } else {
+      setSaveStatus('Errore: ' + (data.error || 'salvataggio non riuscito'), false);
+    }
+  } catch (e) {
+    setSaveStatus('Errore di rete o salva_cerchi.php non trovato sul server: ' + e.message, false);
+  }
+  btn.disabled = false;
 });
 
 document.getElementById('downloadBtn').addEventListener('click', () => {
