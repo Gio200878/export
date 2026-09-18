@@ -196,6 +196,7 @@ function agenteLabel(code) { return AGENTI[code] || `HM2I ${code}`; }
 const LINE_LABELS = {"COL": "Colorazione", "GOLD": "Gold Line", "STY": "Styling", "INP": "Trattamenti Inpackage", "KIT": "Kit", "SOL": "Solari", "TRI": "Trichology", "1.K": "1.K", "BRO": "Brow", "FOR": "Formazione", "GES": "Gestionale", "BEN": "Benvenuto", "ALB": "Album", "VARI": "Varie", "TEN": "Tensioattivi", "FDC": "Fondo Cassa", "CHA": "Cha", "IGIE": "Igienizzanti", "ATT": "Attrezzature", "ONC": "Onc", "CON": "Confezioni", "EMO": "Emo", "GLIC": "Glic", "EMU": "Emulsione", "OLV": "Olv", "GLI": "Gli", "CAT": "Cat", "CIO": "Cio", "PPI": "Ppi", "OLVB": "Olvb", "GOM": "Gom", "NEUT": "Neutro", "SOLV": "Solv", "FIS": "Fis", "LIP": "Lip"};
 
 const fmtEUR = n => n.toLocaleString('it-IT', {style:'currency', currency:'EUR', maximumFractionDigits:0});
+const fmtData = iso => iso ? new Date(iso + 'T00:00:00').toLocaleDateString('it-IT') : '';
 
 // jitter dei punti che condividono la stessa città/coordinate
 const groups = {};
@@ -243,7 +244,7 @@ function popupHTML(c) {
     <div class="popup-title">${c.nome}</div>
     <div class="popup-sub">${c.citta} (${c.prov}) &middot; ${agenteLabel(c.hm2i)}</div>
     <table class="popup-lines">${rows}</table>
-    <div class="popup-total">Totale da inizio anno &nbsp; ${fmtEUR(c.totale)}</div>
+    <div class="popup-total">Totale al ${fmtData(c.ultima_data)} &nbsp; ${fmtEUR(c.totale)}</div>
   `;
 }
 

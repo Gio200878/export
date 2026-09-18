@@ -137,6 +137,7 @@ def calcola_clienti(righe, cache):
             "totale": c["totale"],
             "linee": c["linee"],
             "geo_precisione": info["geo_precisione"],
+            "ultima_data": c["ultima"].isoformat(),
         })
 
     if mancanti_cache:
