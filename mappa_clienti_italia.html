@@ -16,14 +16,21 @@
     --accent: #2f5d50;
   }
   * { box-sizing: border-box; }
-  body {
+  html, body {
     margin: 0;
+    height: 100%;
+    overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background: var(--paper);
     color: var(--ink);
   }
+  body {
+    display: flex;
+    flex-direction: column;
+  }
   header {
-    padding: 18px 24px 12px;
+    flex: 0 0 auto;
+    padding: 14px 24px;
     border-bottom: 1px solid var(--line);
     display: flex;
     align-items: baseline;
@@ -44,7 +51,8 @@
   .layout {
     display: flex;
     align-items: stretch;
-    height: 640px;
+    flex: 1 1 auto;
+    min-height: 0;
   }
   #map {
     flex: 1 1 auto;
