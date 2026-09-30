@@ -41,20 +41,24 @@ const SEND_EMAIL_NOTIFICATION = false; // false per salvare solo su Drive, senza
 // richiesta, cosi' nessuno puo' usare questo endpoint pubblico per spedire email a caso.
 const COMPLETION_EMAIL = "info@monacelliitaly.it";
 
+// PAGINA RIEPILOGO SALONI (uso interno): password richiesta per leggere e modificare i dati.
+// Impostala qui, oppure (meglio) in Impostazioni progetto ▸ Proprietà script ▸ ADMIN_KEY.
+// Se e' vuota la pagina riepilogo e' DISABILITATA (i dati dei saloni non sono mai esposti).
+const ADMIN_KEY = "";
+
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
       return jsonResponse({ ok: false, error: "Nessun dato ricevuto" });
     }
     const payload = JSON.parse(e.postData.contents);
+    if (payload.action) return jsonResponse(gestisciAdmin(payload)); // pagina riepilogo
     const filename = sanitizeFilename(payload.filename || "Magis Plus Raccolta Dati.json");
     const data = payload.data || payload; // tollera sia {filename,data} sia il solo oggetto dati
     const jsonText = JSON.stringify(data, null, 2);
 
     // 1) Salva il file su Drive
-    const folder = DRIVE_FOLDER_ID
-      ? DriveApp.getFolderById(DRIVE_FOLDER_ID)
-      : DriveApp.getRootFolder();
+    const folder = cartella_();
     const file = folder.createFile(filename, jsonText, MimeType.PLAIN_TEXT);
     file.setName(filename); // createFile a volte aggiunge un'estensione, forziamo il nome
 
@@ -83,6 +87,64 @@ function doPost(e) {
   } catch (err) {
     return jsonResponse({ ok: false, error: String(err) });
   }
+}
+
+function cartella_() {
+  return DRIVE_FOLDER_ID ? DriveApp.getFolderById(DRIVE_FOLDER_ID) : DriveApp.getRootFolder();
+}
+
+// ---------------------------------------------------------------------------
+// PAGINA RIEPILOGO SALONI
+// ---------------------------------------------------------------------------
+function chiaveAdmin_() {
+  return PropertiesService.getScriptProperties().getProperty("ADMIN_KEY") || ADMIN_KEY;
+}
+
+function gestisciAdmin(p) {
+  const chiave = chiaveAdmin_();
+  if (!chiave) return { ok: false, error: "Pagina riepilogo non abilitata: imposta ADMIN_KEY nello script." };
+  if (String(p.key || "") !== chiave) {
+    Utilities.sleep(1500); // rallenta i tentativi a caso
+    return { ok: false, error: "Password non valida" };
+  }
+  if (p.action === "admin_list") return elencaModuli();
+  if (p.action === "admin_save") return salvaModulo(p);
+  return { ok: false, error: "Azione sconosciuta" };
+}
+
+/** Per ogni salone e modulo restituisce il file piu' recente (i salvataggi ripetuti creano piu' file). */
+function elencaModuli() {
+  const piuRecenti = {};
+  const it = cartella_().getFiles();
+  while (it.hasNext()) {
+    const file = it.next();
+    if (file.getSize() > 2000000) continue;
+    let d;
+    try { d = JSON.parse(file.getBlob().getDataAsString()); } catch (err) { continue; }
+    if (!d || !d.modulo || !d.CODICE) continue;
+    const t = file.getLastUpdated().getTime();
+    const k = d.CODICE + "|" + d.modulo;
+    if (!piuRecenti[k] || t > piuRecenti[k].t) {
+      piuRecenti[k] = { t: t, fileId: file.getId(), name: file.getName(),
+                        updated: file.getLastUpdated().toISOString(), data: d };
+    }
+  }
+  return { ok: true, items: Object.keys(piuRecenti).map(function (k) { return piuRecenti[k]; }) };
+}
+
+/** Sovrascrive il contenuto di un file gia' esistente (Drive tiene lo storico delle versioni). */
+function salvaModulo(p) {
+  const d = p.data;
+  if (!p.fileId || !d || !d.modulo || !d.CODICE) return { ok: false, error: "Dati non validi" };
+  const file = DriveApp.getFileById(p.fileId);
+  const idCartella = cartella_().getId();
+  let dentro = false;
+  const genitori = file.getParents();
+  while (genitori.hasNext()) { if (genitori.next().getId() === idCartella) dentro = true; }
+  if (!dentro) return { ok: false, error: "File non appartenente alla cartella dei moduli" };
+  file.setContent(JSON.stringify(d, null, 2));
+  if (p.filename) file.setName(sanitizeFilename(p.filename));
+  return { ok: true, updated: file.getLastUpdated().toISOString() };
 }
 
 /** Email "dati ... pronti per essere elaborati" con i 4 campi di "Dati salone". */
