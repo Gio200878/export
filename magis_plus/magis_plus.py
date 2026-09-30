@@ -677,7 +677,6 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
         voci_indice.append(("sviluppo", "Progetto di sviluppo personalizzato"))
     if collab:
         voci_indice.append(("team", "Analisi team"))
-    voci_indice.append(("academy", "Formazione anno corrente e successivo"))
 
     # barra di navigazione in fondo pagina: stesse voci principali, sempre coerente
     global NAV
@@ -690,7 +689,6 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
         NAV.append(("sviluppo", "Sviluppo"))
     if collab:
         NAV.append(("team", "Collaboratori"))
-    NAV.append(("academy", "Academy"))
 
     # Ogni elemento e' ("H", html, titolo) per una pagina generata, oppure
     # ("M", [pagine del modello], html_di_riserva, titolo) per pagine identiche al modello.
@@ -773,7 +771,6 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
             nome_c = (c.get("NOME_OPERATORE") or f"Collaboratore {i+1}").strip()
             add(pg(moderne.persona(c, i, collab, moderne.mappa_id(i)), f"p{i}", nome_c), nome_c)
 
-    add(pg(teoria.pagina_academy(), "academy", "Academy"), "Monacelli Happiness Academy")
     # ultima pagina identica al modello (pagina 36: contatti Monacelli Italy)
     add_modello([36], pg('', "back", "Contatti", nav=False, extra_cls="back-bg"), "Contatti")
     # numeri di pagina nella barra in basso (le pagine "M" del modello possono essere piu' di una)
