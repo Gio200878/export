@@ -57,10 +57,12 @@ function doPost(e) {
     const data = payload.data || payload; // tollera sia {filename,data} sia il solo oggetto dati
     const jsonText = JSON.stringify(data, null, 2);
 
-    // 1) Salva il file su Drive
+    // 1) Salva su Drive: UN SOLO FILE per salone, che raccoglie tutti e tre i moduli
+    //    (i salvataggi successivi aggiornano lo stesso file invece di crearne di nuovi).
     const folder = cartella_();
-    const file = folder.createFile(filename, jsonText, MimeType.PLAIN_TEXT);
-    file.setName(filename); // createFile a volte aggiunge un'estensione, forziamo il nome
+    const file = PARTI_MODULO[data.modulo] && data.CODICE
+      ? salvaFileUnico_(folder, filename, data)
+      : creaFile_(folder, filename, jsonText); // dati senza "modulo": comportamento di prima
 
     // 2) Invia l'email di notifica con il file allegato
     if (SEND_EMAIL_NOTIFICATION) {
@@ -86,6 +88,87 @@ function doPost(e) {
     return jsonResponse(risposta);
   } catch (err) {
     return jsonResponse({ ok: false, error: String(err) });
+  }
+}
+
+// Quali campi del JSON appartengono a ciascun modulo del sito.
+const MODULO_UNICO = "raccolta_dati_completa";
+const CAMPI_SALONE = ["CODICE", "NOME_SALONE", "NOME_TITOLARE", "HM2I"];
+const PARTI_MODULO = {
+  gestione_tariffe: ["gestione", "tariffe"],
+  analisi_collaboratore: ["collaboratori"],
+  immagine_sogno_salone: ["numero_team", "immagine", "postazioni", "materiale_salone", "materiale_vetrine",
+                          "presenza_social", "brand", "proposte_sviluppo", "sogno"]
+};
+
+function creaFile_(folder, filename, testo) {
+  const file = folder.createFile(filename, testo, MimeType.PLAIN_TEXT);
+  file.setName(filename); // createFile a volte aggiunge un'estensione, forziamo il nome
+  return file;
+}
+
+/** Nome come lo genera la pagina del sito ("safe"): solo lettere, numeri, _ e -. */
+function safeCodice_(c) {
+  return String(c == null ? "" : c).trim().replace(/[^a-z0-9À-ÿ_-]+/gi, "_");
+}
+
+/** Tutti i file JSON della cartella riferiti a quel codice (nome con "(codice)"), piu' vecchi per primi. */
+function fileDelSalone_(folder, codice) {
+  const trovati = [];
+  const it = folder.searchFiles('title contains "(' + safeCodice_(codice) + ')"');
+  while (it.hasNext()) {
+    const file = it.next();
+    if (file.getSize() > 2000000) continue;
+    let d;
+    try { d = JSON.parse(file.getBlob().getDataAsString()); } catch (err) { continue; }
+    if (d && String(d.CODICE) === String(codice)) trovati.push({ file: file, data: d, t: file.getLastUpdated().getTime() });
+  }
+  return trovati.sort(function (a, b) { return a.t - b.t; });
+}
+
+function unisciParti_(dest, src) {
+  CAMPI_SALONE.forEach(function (k) { if (src[k] != null && src[k] !== "") dest[k] = src[k]; });
+  Object.keys(PARTI_MODULO).forEach(function (modulo) {
+    if (src.modulo === modulo || (src.modulo === MODULO_UNICO)) {
+      PARTI_MODULO[modulo].forEach(function (k) { if (k in src) dest[k] = src[k]; });
+    }
+  });
+}
+
+/**
+ * Aggiorna (o crea) il file unico del salone. Se esiste gia' un file unico lo usa; altrimenti lo
+ * costruisce riunendo gli eventuali file dei singoli moduli salvati in precedenza (senza cancellarli).
+ */
+function salvaFileUnico_(folder, filename, data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const esistenti = fileDelSalone_(folder, data.CODICE);
+    const unici = esistenti.filter(function (e) { return e.data.modulo === MODULO_UNICO; });
+    const unico = {};
+    let file = null;
+    if (unici.length) {
+      file = unici[unici.length - 1].file;
+      unisciParti_(unico, unici[unici.length - 1].data);
+    } else {
+      esistenti.forEach(function (e) { unisciParti_(unico, e.data); }); // recupera i moduli gia' salvati a parte
+    }
+    unisciParti_(unico, data);                       // il modulo appena inviato prevale
+    unico.modulo = MODULO_UNICO;
+    const prec = unici.length ? (unici[unici.length - 1].data.moduli_compilati || {}) : {};
+    esistenti.forEach(function (e) { if (PARTI_MODULO[e.data.modulo] && !prec[e.data.modulo]) prec[e.data.modulo] = e.file.getLastUpdated().toISOString(); });
+    prec[data.modulo] = new Date().toISOString();
+    unico.moduli_compilati = prec;
+    const testo = JSON.stringify(unico, null, 2);
+    if (file) {
+      file.setContent(testo);
+      file.setName(filename);
+    } else {
+      file = creaFile_(folder, filename, testo);
+    }
+    return file;
+  } finally {
+    lock.releaseLock();
   }
 }
 

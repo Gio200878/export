@@ -650,6 +650,13 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
     collab = (mod_collab or {}).get("collaboratori", [])
 
     nome_salone = (cli["salone"] or "").strip() or str(codice)
+    # controllo di completezza dei dati arrivati dal sito (file unico o file separati)
+    ms = mod_salone or {}
+    voci = [("sogno", bool(str(ms.get("sogno") or "").strip())),
+            ("immagine del salone", any(v is not None for v in (ms.get("immagine") or {}).values())),
+            ("materiali e postazioni", bool(ms.get("postazioni") or ms.get("materiale_salone"))),
+            ("collaboratori", bool(collab))]
+    print("   Dati dal sito:  " + "   ".join(f"{n}: {'sì' if ok else 'MANCA'}" for n, ok in voci))
     html_sogno = pagine_modello.pagina_sogno(mod_salone, nome_salone)        # pagine identiche al modello (8, 12, 21)
     html_immagine = pagine_modello.pagina_immagine(mod_salone, nome_salone)
 

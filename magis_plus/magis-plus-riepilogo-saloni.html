@@ -256,23 +256,38 @@ let curTab = 'g';
 let curCollab = 0;
 let sortKey = 'code', sortDir = 1;
 
+// Il sito salva UN file per salone (modulo = "raccolta_dati_completa") con tutti e tre i moduli dentro;
+// i file vecchi, uno per modulo, sono ancora letti. Per ogni modulo vale il file piu' recente che lo contiene.
+const UNICO = 'raccolta_dati_completa';
+const CAMPI_SALONE = ['CODICE','NOME_SALONE','NOME_TITOLARE','HM2I'];
+const PARTI = { g:['gestione','tariffe'], c:['collaboratori'],
+  s:['numero_team','immagine','postazioni','materiale_salone','materiale_vetrine','presenza_social','brand','proposte_sviluppo','sogno'] };
+const haParte = (d, k) => PARTI[k].some(x => x in d);
 function raggruppa(items){
   const m = new Map();
   items.forEach(it => {
-    const d = it.data, mod = MODS.find(x => x.modulo === d.modulo);
-    if (!mod) return;
+    const d = it.data;
+    const legacy = MODS.find(x => x.modulo === d.modulo);
+    if (!legacy && d.modulo !== UNICO) return;
+    const rec = { fileId: it.fileId, name: it.name, updated: it.updated, unico: d.modulo === UNICO, orig: clone(d), work: clone(d) };
     if (!m.has(d.CODICE)) m.set(d.CODICE, { code: d.CODICE, mods: {} });
-    m.get(d.CODICE).mods[mod.k] = { fileId: it.fileId, name: it.name, updated: it.updated, orig: clone(d), work: clone(d) };
+    const s = m.get(d.CODICE);
+    MODS.forEach(t => {
+      if (rec.unico ? !haParte(d, t.k) : t.modulo !== d.modulo) return;
+      const prec = s.mods[t.k];
+      if (!prec || (rec.updated || '') >= (prec.updated || '')) s.mods[t.k] = rec;
+    });
   });
   return [...m.values()];
 }
+const recs = s => [...new Set(Object.values(s.mods))];
 // dati anagrafici: prendo quelli del modulo aggiornato piu' di recente
 function meta(s){
-  const ms = Object.values(s.mods).sort((a,b) => (b.updated||'').localeCompare(a.updated||''));
+  const ms = recs(s).sort((a,b) => (b.updated||'').localeCompare(a.updated||''));
   const d = ms[0] ? ms[0].orig : {};
   return { nome: d.NOME_SALONE || '', titolare: d.NOME_TITOLARE || '', hm2i: d.HM2I || '' };
 }
-const ultimo = s => Object.values(s.mods).map(m => m.updated || '').sort().pop() || '';
+const ultimo = s => recs(s).map(m => m.updated || '').sort().pop() || '';
 const nCompletati = s => Object.keys(s.mods).length;
 
 // ---------------------------------------------------------------- accesso
@@ -354,7 +369,7 @@ function apri(code){
 }
 function hm2iCorrente(){ const s = $('m-hm2i'); return s.value === '__altro__' ? $('m-hm2i-altro').value.trim() : s.value; }
 function applicaMeta(){
-  Object.values(cur.mods).forEach(m => {
+  recs(cur).forEach(m => {
     m.work.NOME_SALONE = $('m-nome').value.trim();
     m.work.NOME_TITOLARE = $('m-titolare').value.trim();
     m.work.HM2I = hm2iCorrente();
@@ -365,18 +380,23 @@ function applicaMeta(){
 $('m-hm2i').onchange = () => { $('m-hm2i-altro').style.display = $('m-hm2i').value === '__altro__' ? 'block' : 'none'; if ($('m-hm2i').value === '__altro__') $('m-hm2i-altro').focus(); applicaMeta(); };
 
 const sporco = m => JSON.stringify(m.work) !== JSON.stringify(m.orig);
-const moduliSporchi = () => cur ? Object.entries(cur.mods).filter(([, m]) => sporco(m)) : [];
-function confermaEsci(){ return !moduliSporchi().length || confirm('Ci sono modifiche non salvate. Vuoi uscire senza salvarle?'); }
+const pick = (o, chiavi) => JSON.stringify(chiavi.map(k => o[k]));
+const anagraficaCambiata = m => pick(m.work, CAMPI_SALONE) !== pick(m.orig, CAMPI_SALONE);
+// il modulo k e' stato modificato? (in un file unico si confrontano solo i campi di quel modulo)
+const sporcoMod = (k, m) => m.unico ? pick(m.work, PARTI[k]) !== pick(m.orig, PARTI[k]) : sporco(m);
+const recSporchi = () => cur ? recs(cur).filter(sporco) : [];
+const moduliSporchi = () => cur ? Object.entries(cur.mods).filter(([k, m]) => sporcoMod(k, m)) : [];
+function confermaEsci(){ return !recSporchi().length || confirm('Ci sono modifiche non salvate. Vuoi uscire senza salvarle?'); }
 
 $('btn-back').onclick = () => { if (!confermaEsci()) return; cur = null; disegnaElenco(); mostra('list'); };
-window.addEventListener('beforeunload', e => { if (moduliSporchi().length){ e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', e => { if (recSporchi().length){ e.preventDefault(); e.returnValue = ''; } });
 
 function disegnaDettaglio(){
   const m0 = meta(cur);
   $('d-sub').textContent = nCompletati(cur) >= 3 ? 'Tutti e tre i moduli sono stati compilati.' : `Compilati ${nCompletati(cur)} moduli su 3.`;
   $('mtabs').innerHTML = MODS.map(t => {
     const m = cur.mods[t.k];
-    return `<button data-t="${t.k}" aria-current="${t.k === curTab}">${esc(t.titolo)}${m ? '' : ' (non compilato)'}${m && sporco(m) ? '<span class="dot" title="Modificato"></span>' : ''}</button>`;
+    return `<button data-t="${t.k}" aria-current="${t.k === curTab}">${esc(t.titolo)}${m ? '' : ' (non compilato)'}${m && sporcoMod(t.k, m) ? '<span class="dot" title="Modificato"></span>' : ''}</button>`;
   }).join('');
   $('mtabs').querySelectorAll('button').forEach(b => b.onclick = () => { curTab = b.dataset.t; disegnaDettaglio(); });
   const m = cur.mods[curTab];
@@ -496,33 +516,38 @@ function collega(root, m){
 
 // ---------------------------------------------------------------- salvataggio
 function aggiornaBarra(){
-  const sp = moduliSporchi();
+  const sp = recSporchi(), modSp = moduliSporchi();
   $('btn-salva').disabled = !sp.length; $('btn-annulla').disabled = !sp.length;
-  if (sp.length) setStatus('st-save', `Modifiche non salvate in: ${sp.map(([k]) => MODS.find(x => x.k === k).titolo).join(', ')}.`);
+  if (sp.length){
+    const parti = modSp.map(([k]) => MODS.find(x => x.k === k).titolo);
+    if (sp.some(anagraficaCambiata)) parti.unshift('Dati salone');
+    setStatus('st-save', `Modifiche non salvate in: ${parti.join(', ')}.`);
+  }
   else if ($('st-save').classList.contains('err') || !$('st-save').textContent.startsWith('Salvato')) setStatus('st-save', '');
   document.querySelectorAll('#mtabs button').forEach(b => {
     const m = cur && cur.mods[b.dataset.t], dot = b.querySelector('.dot');
-    if (m && sporco(m) && !dot) b.insertAdjacentHTML('beforeend', '<span class="dot" title="Modificato"></span>');
-    if (dot && !(m && sporco(m))) dot.remove();
+    const mod = m && sporcoMod(b.dataset.t, m);
+    if (mod && !dot) b.insertAdjacentHTML('beforeend', '<span class="dot" title="Modificato"></span>');
+    if (dot && !mod) dot.remove();
   });
 }
 $('btn-annulla').onclick = () => {
   if (!confirm('Annullare tutte le modifiche non salvate?')) return;
-  Object.values(cur.mods).forEach(m => m.work = clone(m.orig));
+  recs(cur).forEach(m => m.work = clone(m.orig));
   const m = meta(cur); $('m-nome').value = m.nome; $('m-titolare').value = m.titolare;
   $('m-hm2i').value = m.hm2i; $('m-hm2i-altro').style.display = 'none';
   setStatus('st-save', ''); disegnaDettaglio();
 };
 $('btn-salva').onclick = async () => {
-  const sp = moduliSporchi(); if (!sp.length) return;
+  const sp = recSporchi(); if (!sp.length) return;   // un file per salone (o uno per modulo nei vecchi salvataggi)
   $('btn-salva').disabled = true; setStatus('st-save', 'Salvataggio in corso…');
   const errori = [];
-  for (const [k, m] of sp){
+  for (const m of sp){
     try {
       const r = await api('admin_save', { fileId: m.fileId, data: m.work, filename: fname(m.work.CODICE, m.work.NOME_SALONE) });
       m.orig = clone(m.work); m.updated = r.updated || new Date().toISOString();
       m.name = fname(m.work.CODICE, m.work.NOME_SALONE);
-    } catch(e){ errori.push(`${MODS.find(x => x.k === k).titolo}: ${e.message || e}`); }
+    } catch(e){ errori.push(`${m.name}: ${e.message || e}`); }
   }
   if (errori.length) setStatus('st-save', 'Salvataggio non riuscito — ' + errori.join(' · '), true);
   else setStatus('st-save', 'Salvato. Tutte le modifiche sono state registrate.');
