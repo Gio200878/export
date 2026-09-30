@@ -346,8 +346,9 @@ def _leggi_candidati(codice):
             if os.path.abspath(path) in visti or os.sep + "output" + os.sep in path:
                 continue
             visti.add(os.path.abspath(path))
-            nome_ok = f"({codice})" in nome or f"_{codice}." in nome
-            if not nome_ok and "raccolta dati" not in nome.lower():
+            # il codice compare nel nome come numero a se' stante: "(3353)", "_3353.json", "_3353_1.json"...
+            nome_ok = re.search(rf"(?<!\d){re.escape(codice)}(?!\d)", nome) is not None
+            if not nome_ok and not re.search(r"raccolta[ _]dati", nome, re.I):
                 continue
             try:
                 with open(path, encoding="utf-8-sig") as f:
