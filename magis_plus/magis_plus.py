@@ -27,6 +27,7 @@ import webbrowser
 import magis_plus_teoria as teoria
 import magis_plus_fonts as fonts
 import magis_plus_pagine as pagine_modello
+import magis_plus_moderne as moderne
 
 try:
     import openpyxl
@@ -405,7 +406,7 @@ FONTFACE_CSS = (
     '.page.back-bg{background-image:url(data:image/jpeg;base64,' + fonts.BACK_B64 + ');background-size:cover;background-position:center}\n'
 )
 
-CSS = FONTFACE_CSS + pagine_modello.ABS_CSS + """
+CSS = FONTFACE_CSS + pagine_modello.ABS_CSS + moderne.CSS + """
 @page { size: A4; margin: 0; }
 *{box-sizing:border-box}
 body{margin:0;background:#0F1330;color:#EEEDF8;font-family:"Fig",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -488,6 +489,7 @@ p.lede.lp{font-size:11pt;margin:0 0 5.7mm;max-width:none}
 """
 
 NAV = [("indice", "Indice")]
+ANCORE = {}  # nome ancora -> indice dell'elemento (pagine generate o copiate dal modello)
 
 
 def pg(body, pid, title, nav=True, extra_cls=""):
@@ -659,7 +661,11 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
             ("collaboratori", bool(collab))]
     print("   Dati dal sito:  " + "   ".join(f"{n}: {'sì' if ok else 'MANCA'}" for n, ok in voci))
     html_sogno = pagine_modello.pagina_sogno(mod_salone, nome_salone)        # pagine identiche al modello (8, 12, 21)
-    html_immagine = pagine_modello.pagina_immagine(mod_salone, nome_salone)
+    ha_immagine = bool(ms) and (any(v is not None for v in (ms.get("immagine") or {}).values())
+                               or any(v is not None for v in (ms.get("postazioni") or {}).values())
+                               or any(str(ms.get(k) or "").strip() for k in ("materiale_salone", "materiale_vetrine", "presenza_social", "brand", "proposte_sviluppo"))
+                               or ms.get("numero_team") is not None)
+    html_immagine = pg(moderne.pagina_immagine(ms, nome_salone), "immagine-pg", "Immagine") if ha_immagine else None
 
     # indice dinamico: solo le voci realmente presenti in questo documento
     voci_indice = [("cosa", "Cos\'e\' Magis Plus")]
@@ -689,12 +695,17 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
     # Ogni elemento e' ("H", html, titolo) per una pagina generata, oppure
     # ("M", [pagine del modello], html_di_riserva, titolo) per pagine identiche al modello.
     pagine = []
+    ANCORE.clear()
 
-    def add(html, titolo=None):
+    def add(html, titolo=None, ancora=None):
         pagine.append(("H", html, titolo))
+        if ancora:
+            ANCORE[ancora] = len(pagine) - 1
 
-    def add_modello(nums, fallback_html, titolo=None):
+    def add_modello(nums, fallback_html, titolo=None, ancora=None):
         pagine.append(("M", nums, fallback_html, titolo))
+        if ancora:
+            ANCORE[ancora] = len(pagine) - 1
 
     add(pg(f'''<div class="cover"><div class="big">{(cli['salone'] or codice)}</div></div>''', "cover", "Copertina", nav=False, extra_cls="cover-bg"),
         "Copertina")
@@ -703,25 +714,25 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
     add_modello([2], f'<section class="page" id="quote">{teoria.pagina_quote()}</section>', "Citazione")
     add_modello([3], pg(teoria.pagina_introduzione(), "intro", "Introduzione"), "Introduzione")
     add_modello([4], pg(teoria.pagina_lettera_ceo(), "ceo", "Lettera del CEO"), "Lettera del CEO")
-    add_modello([5], pg(teoria.pagina_indice(voci_indice), "indice", "Indice"), "Indice")
-    add_modello([6], pg(teoria.pagina_cosepla(), "cosa", "Cos\'e\' Magis Plus"), "Cos\'e\' Magis Plus")
-    add_modello([7], pg(f'<h1>Il mio <b>sogno</b></h1>', "sogno-cover", "Il mio sogno", nav=False), "Il mio sogno")
+    add_modello([5], pg(teoria.pagina_indice(voci_indice), "indice", "Indice"), "Indice", "indice")
+    add_modello([6], pg(teoria.pagina_cosepla(), "cosa", "Cos\'e\' Magis Plus"), "Cos\'e\' Magis Plus", "cosa")
+    add_modello([7], pg(f'<h1>Il mio <b>sogno</b></h1>', "sogno-cover", "Il mio sogno", nav=False), "Il mio sogno", "sogno")
 
     if html_sogno:
         add(html_sogno, "Il mio sogno (salone)")
     if html_immagine:
         # copertina verde "IMMAGINE INTERNA ED ESTERNA" (pagina 11 del modello)
         add_modello([11], pg('<h1>Immagine <b>interna ed esterna</b></h1>', "immagine-cover", "Immagine", nav=False),
-                    "Immagine interna ed esterna")
+                    "Immagine interna ed esterna", "immagine")
         add(html_immagine, "Immagine del salone")
 
     if dF or dM:
         # copertina "PROGETTO DI SVILUPPO" + pagina di testo (pagine 13 e 14 del modello)
         add_modello([13], pg('<h1>Progetto <b>di sviluppo</b></h1>', "sviluppo-cover", "Sviluppo", nav=False),
-                    "Progetto di sviluppo")
+                    "Progetto di sviluppo", "sviluppo")
         add_modello([14], pg(f'''<h2>Progetto <b>di sviluppo</b></h2>
           <p class="lede">Situazione attuale e ipotesi di sviluppo del salone, calcolate sui dati PSD.</p>''',
-                          "sviluppo", "Sviluppo"), "Progetto di sviluppo: introduzione")
+                          "sviluppo-testo", "Sviluppo"), "Progetto di sviluppo: introduzione")
 
     if dF:
         dF_ = dict(dF, fiche_att=cli["fiche_att_f"])
@@ -756,8 +767,11 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
         add_modello([19], pg('<h1>Analisi <b>collaboratori</b></h1>', "team-cover", "Collaboratori", nav=False),
                     "Analisi collaboratori")
         add_modello([20], pg('<h2>Analisi <b>team</b></h2>', "team-intro", "Collaboratori"), "Analisi team")
+        for sid, corpo in moderne.mappa_team(collab):
+            add(pg(corpo, sid, "Collaboratori"), "Analisi collaboratori (mappa del team)")
         for i, c in enumerate(collab):
-            add(pagine_modello.pagina_collaboratore(c, nome_salone, i), c.get("NOME_OPERATORE") or f"Collaboratore {i+1}")
+            nome_c = (c.get("NOME_OPERATORE") or f"Collaboratore {i+1}").strip()
+            add(pg(moderne.persona(c, i, collab, moderne.mappa_id(i)), f"p{i}", nome_c), nome_c)
 
     add(pg(teoria.pagina_academy(), "academy", "Academy"), "Monacelli Happiness Academy")
     # ultima pagina identica al modello (pagina 36: contatti Monacelli Italy)
@@ -820,9 +834,12 @@ def html_completo(items):
 
 def assembla_pdf(cli, codice, items, pdf_path):
     """Costruisce il PDF finale: le pagine generate vengono stampate dal browser, mentre le pagine
-    "M" sono copiate senza modifiche dal modello, nell'ordine previsto. Ritorna True se riuscito."""
+    "M" sono copiate senza modifiche dal modello, nell'ordine previsto. I link interni (barra in basso,
+    nomi dei collaboratori, pulsanti) vengono rimessi a posto anche fra pezzi diversi.
+    Ritorna True se riuscito."""
     try:
         from pypdf import PdfReader, PdfWriter
+        from pypdf.generic import ArrayObject, NameObject, NumberObject
     except ImportError:
         print("(nota: 'pip install pypdf' serve per inserire le pagine identiche al modello)")
         return False
@@ -830,49 +847,132 @@ def assembla_pdf(cli, codice, items, pdf_path):
         print(f"(nota: manca '{os.path.basename(MODELLO_PATH)}' nella cartella dello script)")
         return False
     modello = PdfReader(MODELLO_PATH)
-    w = PdfWriter()
-    segnalibri = []
     tmp_files = []
 
-    def stampa_gruppo(gruppo, k):
-        tmp_html = os.path.join(OUT_DIR, f"_tmp_{codice}_{k}.html")
-        tmp_pdf = os.path.join(OUT_DIR, f"_tmp_{codice}_{k}.pdf")
+    # ---- ancore: id di sezione delle pagine generate + ancore esplicite (pagine copiate dal modello)
+    sez_id = {}
+    for k, it in enumerate(items):
+        if it[0] == "H":
+            m = re.search(r'<section[^>]*\sid="([^"]+)"', it[1])
+            sez_id[k] = m.group(1) if m else None
+    nomi_ancore = set(v for v in sez_id.values() if v) | set(ANCORE)
+
+    # ---- 1) stampa dei gruppi di pagine generate consecutive
+    gruppi = []          # ("R", [indici item], reader, n_reali, [nomi stub], {item: pagina locale di inizio}) oppure ("M", indice)
+    corrente = []
+
+    def stampa_gruppo(ks, n):
+        sezioni = [items[k][1] for k in ks]
+        unito = "".join(sezioni)
+        definiti = set(re.findall(r'\sid="([^"]+)"', unito))
+        linkati = set(re.findall(r'href="#([^"]+)"', unito))
+        stub = sorted(x for x in linkati if x in nomi_ancore and (x not in definiti or x in ANCORE))
+        html_stub = "".join(f'<section class="page stub" id="{x}"></section>' for x in stub)
+        tmp_html = os.path.join(OUT_DIR, f"_tmp_{codice}_{n}.html")
+        tmp_pdf = os.path.join(OUT_DIR, f"_tmp_{codice}_{n}.pdf")
         tmp_files.extend([tmp_html, tmp_pdf])
         with open(tmp_html, "w", encoding="utf-8") as f:
-            f.write(render_html_pdf(cli, codice, [g[1] for g in gruppo]))
+            f.write(render_html_pdf(cli, codice, sezioni + [html_stub]))
         if not stampa_pdf(tmp_html, tmp_pdf):
             return False
         r = PdfReader(tmp_pdf)
-        inizio = len(w.pages)
-        for p in r.pages:
-            w.add_page(p)
-        for i, g in enumerate(gruppo):
-            if g[2] and inizio + i < len(w.pages):
-                segnalibri.append((inizio + i, g[2]))
+        dest = {}
+        for nome, d in r.named_destinations.items():
+            try:
+                dest[nome.lstrip("/")] = r.get_destination_page_number(d)
+            except Exception:
+                pass
+        n_reali = len(r.pages) - len(stub)
+        inizi = {}
+        for pos, k in enumerate(ks):
+            loc = dest.get(sez_id.get(k))
+            inizi[k] = loc if loc is not None and loc < n_reali else (inizi[ks[pos - 1]] + 1 if pos else 0)
+        gruppi.append(("R", ks, r, n_reali, stub, inizi, dest))
         return True
 
     try:
-        gruppo, k = [], 0
-        for it in items + [None]:
-            if it is not None and it[0] == "H":
-                gruppo.append(it)
+        n_gr = 0
+        for k, it in enumerate(items):
+            if it[0] == "H":
+                corrente.append(k)
                 continue
-            if gruppo:
-                if not stampa_gruppo(gruppo, k):
+            if corrente:
+                if not stampa_gruppo(corrente, n_gr):
                     return False
-                gruppo, k = [], k + 1
-            if it is None:
-                break
-            inizio = len(w.pages)
-            for n in it[1]:
-                w.add_page(modello.pages[MODELLO_PAGINE.index(n)])
-            if it[3]:
-                segnalibri.append((inizio, it[3]))
-        for idx, titolo in segnalibri:
-            w.add_outline_item(titolo, idx)
+                corrente, n_gr = [], n_gr + 1
+            gruppi.append(("M", k))
+        if corrente and not stampa_gruppo(corrente, n_gr):
+            return False
+
+        # ---- 2) posizione (pagina globale) di ogni elemento
+        inizio_item, quante = {}, {}
+        cursore = 0
+        for g in gruppi:
+            if g[0] == "M":
+                k = g[1]
+                inizio_item[k], quante[k] = cursore, len(items[k][1])
+                cursore += quante[k]
+            else:
+                _, ks, r, n_reali, stub, inizi, _dest = g
+                for pos, k in enumerate(ks):
+                    fine = inizi[ks[pos + 1]] if pos + 1 < len(ks) else n_reali
+                    inizio_item[k] = cursore + inizi[k]
+                    quante[k] = max(1, fine - inizi[k])
+                cursore += n_reali
+        ancora_pagina = {nome: inizio_item[k] for k, nome in sez_id.items() if nome}
+        ancora_pagina.update({nome: inizio_item[k] for nome, k in ANCORE.items() if k in inizio_item})
+
+        # ---- 3) composizione del PDF
+        w = PdfWriter()
+        for g in gruppi:
+            if g[0] == "M":
+                for n in items[g[1]][1]:
+                    w.add_page(modello.pages[MODELLO_PAGINE.index(n)])
+                continue
+            _, ks, r, n_reali, stub, inizi, dest = g
+            base = len(w.pages)
+            for i in range(n_reali):
+                pagina = r.pages[i]
+                nuove = []
+                for ann in pagina.get("/Annots", []) or []:
+                    o = ann.get_object()
+                    d = o.get("/Dest")
+                    if d is None and "/A" in o and "/D" in o["/A"].get_object():
+                        d = o["/A"].get_object()["/D"]
+                    if d is None:
+                        nuove.append(ann)
+                        continue
+                    nome = str(d).lstrip("/") if not isinstance(d, list) else None   # Chrome scrive destinazioni per nome
+                    loc = dest.get(nome) if nome else None
+                    if loc is None:
+                        continue
+                    if loc < n_reali and nome not in ANCORE:
+                        dest_globale = base + loc
+                    else:
+                        dest_globale = ancora_pagina.get(nome, -1)
+                    if dest_globale < 0:
+                        continue                                  # ancora inesistente: niente link
+                    if "/A" in o:
+                        del o["/A"]
+                    o[NameObject("/Dest")] = NumberObject(dest_globale)   # segnaposto, risolto dopo
+                    nuove.append(ann)
+                pagina[NameObject("/Annots")] = ArrayObject(nuove)
+                w.add_page(pagina)
+        for pagina in w.pages:
+            for ann in pagina.get("/Annots", []) or []:
+                o = ann.get_object()
+                if isinstance(o.get("/Dest"), NumberObject):
+                    o[NameObject("/Dest")] = ArrayObject([w.pages[int(o["/Dest"])].indirect_reference, NameObject("/Fit")])
+
+        for k, it in enumerate(items):
+            titolo = it[-1]
+            if titolo and k in inizio_item and inizio_item[k] < len(w.pages):
+                w.add_outline_item(titolo, inizio_item[k])
         w.page_mode = "/UseOutlines"
         with open(pdf_path, "wb") as f:
             w.write(f)
+        if cursore != len(w.pages):
+            print(f"   (attenzione: {len(w.pages)} pagine nel PDF, previste {cursore})")
         return True
     finally:
         for t in tmp_files:

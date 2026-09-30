@@ -81,7 +81,7 @@ def pagina_sogno(dati_salone, nome_salone):
           f'font-size:{corpo_pt}pt;line-height:1.55;color:#16365C;white-space:pre-wrap">{esc(sogno)}'
           f'<div style="margin-top:8mm;text-align:center;font-family:Calibri,Carlito,Arial,sans-serif;font-style:normal;'
           f'font-weight:700;font-size:14pt;color:#E8452C">{esc(autore)}</div></div>')
-    return _pagina("sogno", c)
+    return _pagina("sogno-pg", c)
 
 
 # ----------------------------------------------------------------------------- IMMAGINE INTERNA ED ESTERNA
