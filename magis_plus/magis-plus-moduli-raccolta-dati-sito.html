@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Magis Plus — Moduli di raccolta dati</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@300;500;700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1330;--surface:#171C42;--surface-2:#1F2552;--ink:#EEEDF8;--muted:#A5A9CB;--line:#2C3266;
+  --violet:#A08BFF;--gold:#E8C766;--good:#5FD39E;--bad:#FF7C99;
+  --display:"Big Shoulders Display",sans-serif;--body:"Figtree",system-ui,sans-serif;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);font-weight:500;margin:0;letter-spacing:.01em}
+.wrap{max-width:900px;margin:0 auto;padding:0 20px 80px}
+a{color:var(--gold)}
+
+nav.top{position:sticky;top:0;z-index:20;background:rgba(15,19,48,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav.top .wrap{display:flex;gap:6px;padding:0;overflow-x:auto;scrollbar-width:none;height:58px;align-items:center}
+nav.top .wrap::-webkit-scrollbar{display:none}
+nav.top .brand{font-family:var(--display);font-weight:800;font-size:1.25rem;margin-right:10px;white-space:nowrap}
+nav.top button{font:inherit;font-weight:600;font-size:.92rem;color:var(--muted);background:transparent;border:1px solid transparent;border-radius:99px;padding:8px 14px;cursor:pointer;white-space:nowrap}
+nav.top button[aria-current="true"]{color:var(--ink);background:var(--surface-2);border-color:var(--line)}
+
+header.hero{padding:38px 0 8px}
+header.hero p{color:var(--muted);max-width:60ch;margin:8px 0 0}
+
+.panel{display:none}
+.panel.active{display:block}
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 22px 26px;margin-top:20px}
+section.card h2{font-size:1.5rem;margin-bottom:4px}
+section.card h2 b{font-weight:800}
+section.card .sub{color:var(--muted);font-size:.9rem;margin-bottom:16px}
+h3.grp{font-size:1.05rem;font-weight:700;margin:22px 0 10px;padding-top:14px;border-top:1px solid var(--line)}
+h3.grp:first-of-type{border-top:0;padding-top:0;margin-top:4px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px 16px}
+.grid.two{grid-template-columns:1fr 1fr}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.wide{grid-column:1/-1}
+.field label{font-size:.85rem;color:var(--muted)}
+input,select,textarea{font:inherit;background:var(--surface-2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:9px 11px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--violet);outline-offset:1px}
+textarea{resize:vertical;min-height:70px}
+input[type="number"]{-moz-appearance:textfield}
+
+.rate-table{margin-top:6px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.rate-row{display:grid;grid-template-columns:1fr 110px 110px;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)}
+.rate-row:last-child{border-bottom:0}
+.rate-row.head{background:var(--surface-2);font-size:.82rem;color:var(--muted);font-weight:600}
+.rate-row span{font-size:.92rem}
+
+.score-row{display:grid;grid-template-columns:1fr 140px;gap:10px;align-items:center;padding:6px 0}
+.score-row span{font-size:.92rem}
+.score-row input{width:100%}
+.scale-hint{font-size:.76rem;color:var(--muted);margin:-4px 0 10px}
+
+.chipset{display:flex;flex-wrap:wrap;gap:8px}
+.chipset label{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:6px 12px;font-size:.85rem;color:var(--ink);cursor:pointer}
+.chipset input{width:auto;padding:0;margin:0}
+
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+button.primary{font:inherit;font-weight:700;background:var(--gold);color:#1A1440;border:0;border-radius:99px;padding:11px 22px;cursor:pointer}
+button.primary:hover{filter:brightness(1.05)}
+button.ghost{font:inherit;font-weight:600;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:11px 18px;cursor:pointer}
+.status{font-size:.85rem;color:var(--good);align-self:center;min-height:1.2em}
+.status.err{color:var(--bad)}
+
+.opTabs{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.opTabs button{font:inherit;font-size:.82rem;font-weight:600;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:6px 12px;cursor:pointer}
+.opTabs button[aria-current="true"]{background:var(--violet);color:#fff;border-color:var(--violet)}
+.opTabs button.add{color:var(--gold);border-color:var(--gold)}
+
+footer.note{color:var(--muted);font-size:.8rem;margin-top:10px}
+@media (max-width:640px){.rate-row{grid-template-columns:1fr 90px 90px}.grid.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav class="top"><div class="wrap">
+  <span class="brand">Magis Plus</span>
+  <button data-p="gestione" aria-current="true">Gestione e tariffe</button>
+  <button data-p="collab">Analisi collaboratore</button>
+  <button data-p="salone">Immagine e sogno del salone</button>
+</div></nav>
+
+<div class="wrap">
+<header class="hero">
+  <h1>Moduli di raccolta dati</h1>
+  <p>Compila i moduli del tuo salone. Ogni scheda si salva in un file che potrai inviarci per costruire il tuo Magis Plus: il progetto di sviluppo personalizzato con obiettivi, tariffe e cammino verso le stelle.</p>
+</header>
+
+<section class="card" id="dati-salone">
+  <h2>Dati <b>salone</b></h2>
+  <div class="sub">Compilati una sola volta: valgono per tutti e tre i moduli.</div>
+  <div class="grid two">
+    <div class="field"><label for="g-codice">Codice salone</label><input id="g-codice"></div>
+    <div class="field"><label for="g-nome">Nome salone</label><input id="g-nome"></div>
+    <div class="field"><label for="g-titolare">Nome titolare</label><input id="g-titolare"></div>
+    <div class="field"><label for="hm2i-select">HM2I</label>
+      <select id="hm2i-select">
+        <option value="">— seleziona —</option>
+        <!-- HM2I_LIST_PLACEHOLDER -->
+        <option value="__altro__">Altro (nuovo)…</option>
+      </select>
+      <input id="hm2i-altro" placeholder="Scrivi il nome" style="display:none;margin-top:6px">
+    </div>
+  </div>
+  <div class="actions" style="margin-top:14px;padding-top:0;border-top:0">
+    <span class="status" id="st-salvataggio"></span>
+  </div>
+</section>
+
+<!-- ================= GESTIONE E TARIFFE ================= -->
+<div class="panel active" id="p-gestione">
+<section class="card">
+  <h2>Gestione</h2>
+  <div class="sub">Indica gli importi annui relativi a:</div>
+  <div class="grid">
+    <div class="field"><label for="g-compensi">Compensi titolari (€)</label><input id="g-compensi" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-stipendi">Stipendi collaboratori (€)</label><input id="g-stipendi" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-premi">Premi aggiuntivi collaboratori (€)</label><input id="g-premi" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-affitti">Affitti (€)</label><input id="g-affitti" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-prodotti">Acquisto prodotti (€)</label><input id="g-prodotti" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-pubblicita">Pubblicità (€)</label><input id="g-pubblicita" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-formazione">Formazione (€)</label><input id="g-formazione" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-consulenza">Consulenza (commercialista...) (€)</label><input id="g-consulenza" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-utenze">Utenze (telefono, gas, energia...) (€)</label><input id="g-utenze" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-altro">Altro (€)</label><input id="g-altro" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-mutui">Mutui, totale rate (€)</label><input id="g-mutui" type="number" min="0" step="1"></div>
+    <div class="field"><label for="g-iva">Iva versata (€)</label><input id="g-iva" type="number" min="0" step="1"></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Tariffe</h2>
+  <div class="grid two">
+    <div class="field"><label for="t-data">Data in vigore da</label><input id="t-data" type="date"></div>
+  </div>
+  <div class="rate-table" id="rateTable">
+    <div class="rate-row head"><span>Servizio</span><span>Femminile €</span><span>Maschile €</span></div>
+  </div>
+  <footer class="note">Lascia vuota la casella per un servizio o un genere che il salone non offre.</footer>
+</section>
+
+<div class="actions">
+  <button class="primary" data-save="gestione">Salva modulo Gestione e tariffe</button>
+  <span class="status" id="st-gestione"></span>
+</div>
+</div>
+
+<!-- ================= ANALISI COLLABORATORE ================= -->
+<div class="panel" id="p-collab">
+<section class="card">
+  <h2>Analisi <b>collaboratore</b></h2>
+  <div class="sub">Un modulo per ogni persona del team. Usa le schede per passare da un collaboratore all'altro senza perdere i dati già inseriti in questa sessione.</div>
+  <div class="opTabs" id="opTabs"></div>
+</section>
+
+<section class="card">
+  <h3 class="grp" style="border-top:0;margin-top:0">Dati identificativi</h3>
+  <div class="grid two">
+    <div class="field"><label>Nome titolare o collaboratore</label><input class="c-nome" name="NOME_OPERATORE"></div>
+    <div class="field"><label>Ruolo</label>
+      <select class="c-ruolo" name="RUOLO">
+        <option value=""></option><option>Titolare</option><option>Collaboratore</option><option>Receptionist</option>
+      </select>
+    </div>
+    <div class="field"><label>Ore lavorate al giorno</label><input class="c-ore" type="number" min="0" max="14" step="0.5"></div>
+    <div class="field wide"><label>Clientela su cui lavora maggiormente</label>
+      <div class="chipset"><label><input type="checkbox" class="c-cli" value="Femminile">Femminile</label><label><input type="checkbox" class="c-cli" value="Maschile">Maschile</label></div>
+    </div>
+    <div class="field wide"><label>Giorni lavorati</label>
+      <div class="chipset">
+        <label><input type="checkbox" class="c-gg" value="Lunedì">Lunedì</label>
+        <label><input type="checkbox" class="c-gg" value="Martedì">Martedì</label>
+        <label><input type="checkbox" class="c-gg" value="Mercoledì">Mercoledì</label>
+        <label><input type="checkbox" class="c-gg" value="Giovedì">Giovedì</label>
+        <label><input type="checkbox" class="c-gg" value="Venerdì">Venerdì</label>
+        <label><input type="checkbox" class="c-gg" value="Sabato">Sabato</label>
+        <label><input type="checkbox" class="c-gg" value="Domenica">Domenica</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="scale-hint">Tutti i punteggi seguenti vanno da 0 (assente) a 10 (eccellente).</div>
+
+  <h3 class="grp">Accoglienza</h3>
+  <div class="grid two" data-scale>
+    <div class="score-row"><span>Saluto</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Controllo appuntamento in agenda</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Routine accoglienza</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Comunicazione iniziative e promozioni</span><input type="number" min="0" max="10" class="s"></div>
+  </div>
+
+  <h3 class="grp">Consulenza</h3>
+  <div class="grid two" data-scale>
+    <div class="score-row"><span>Connessione</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Ascolto</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Capacità di capire i desideri</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Capacità di consigliare</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Condivisione</span><input type="number" min="0" max="10" class="s"></div>
+  </div>
+
+  <h3 class="grp">Professionalità tecnica</h3>
+  <div class="grid two" data-scale>
+    <div class="score-row"><span>Lavaggio — tempi di esecuzione</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Lavaggio — metodo</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Lavaggio — risultato finale</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Colore — tempi di esecuzione</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Colore — metodo</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Colore — risultato finale</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Taglio — tempi di esecuzione</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Taglio — metodo</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Taglio — risultato finale</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Piega — tempi di esecuzione</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Piega — metodo</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Piega — risultato finale</span><input type="number" min="0" max="10" class="s"></div>
+  </div>
+
+  <h3 class="grp">Congedo</h3>
+  <div class="grid two" data-scale>
+    <div class="score-row"><span>Si accerta della soddisfazione della cliente</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Propone o riconferma prodotti di mantenimento</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Quantifica ed elenca servizi</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Fissa la data del prossimo appuntamento</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Prende l'abbigliamento dal guardaroba</span><input type="number" min="0" max="10" class="s"></div>
+  </div>
+
+  <h3 class="grp">Immagine personale</h3>
+  <div class="grid two" data-scale>
+    <div class="score-row"><span>Look coerente con la filosofia aziendale</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Capelli</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Trucco / barba</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Divisa</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Eleganza e postura</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Cura e pulizia degli spazi/oggetti utilizzati</span><input type="number" min="0" max="10" class="s"></div>
+  </div>
+
+  <h3 class="grp">Note</h3>
+  <div class="grid">
+    <div class="field wide"><label>Proposte formative per l'anno successivo</label><textarea class="c-proposte"></textarea></div>
+    <div class="field"><label>Compenso e incentivi</label><input class="c-compenso"></div>
+  </div>
+</section>
+
+<div class="actions">
+  <button class="ghost" data-newop>+ Aggiungi un altro collaboratore</button>
+  <button class="primary" data-save="collab">Salva tutti i collaboratori</button>
+  <span class="status" id="st-collab"></span>
+</div>
+</div>
+
+<!-- ================= SALONE: IMMAGINE E SOGNO ================= -->
+<div class="panel" id="p-salone">
+<section class="card">
+  <h2>Immagine <b>interna ed esterna</b></h2>
+  <div class="sub">Un modulo per salone, compilato una sola volta.</div>
+  <div class="grid two">
+    <div class="field"><label>Numero totale componenti del team</label><input id="s-team" type="number" min="0"></div>
+  </div>
+
+  <h3 class="grp">Il tuo sogno</h3>
+  <div class="grid">
+    <div class="field wide"><label>Raccontaci il tuo sogno</label><textarea id="s-sogno" style="min-height:100px"></textarea></div>
+  </div>
+
+  <div class="scale-hint">Punteggi da 0 a 10, postazioni in numero.</div>
+  <h3 class="grp">Immagine del salone</h3>
+  <div class="grid two">
+    <div class="score-row"><span>Pulizia, ordine, organizzazione</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Immagine</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Armonia cromatica</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Vetrina</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Comunicazione web</span><input type="number" min="0" max="10" class="s"></div>
+    <div class="score-row"><span>Armonia ed energia percepita</span><input type="number" min="0" max="10" class="s"></div>
+  </div>
+
+  <h3 class="grp">Postazioni</h3>
+  <div class="grid two">
+    <div class="score-row"><span>Stilistico</span><input type="number" min="0" id="pos-stilistico"></div>
+    <div class="score-row"><span>Tecnico</span><input type="number" min="0" id="pos-tecnico"></div>
+    <div class="score-row"><span>Lavaggio</span><input type="number" min="0" id="pos-lavaggio"></div>
+    <div class="score-row"><span>Consulenza</span><input type="number" min="0" id="pos-consulenza"></div>
+  </div>
+
+  <h3 class="grp">Materiale e presenza online</h3>
+  <div class="grid">
+    <div class="field wide"><label>Materiale presente nel salone</label><textarea id="s-materiale"></textarea></div>
+    <div class="field wide"><label>Materiale presente sulle vetrine</label><textarea id="s-vetrine"></textarea></div>
+    <div class="field wide"><label>Presenza social</label><textarea id="s-social"></textarea></div>
+    <div class="field wide"><label>Brand con cui lavori maggiormente</label><input id="s-brand"></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Proposte di <b>sviluppo</b></h2>
+  <div class="grid">
+    <div class="field wide"><label>Proposte di sviluppo per l'anno successivo</label><textarea id="s-proposte"></textarea></div>
+  </div>
+</section>
+
+<div class="actions">
+  <button class="primary" data-save="salone">Salva Immagine e sogno del salone</button>
+  <span class="status" id="st-salone"></span>
+</div>
+</div>
+
+</div>
+
+<script>
+const SERVIZI = ["Lavaggio","Cleansing","Piega","Taglio","Permanente / decolorazione","Colore","Meches","Tratt. Gold20","Tratt. Ricostruzione > 25€","Tratt. Cute > 10€","Tratt. Ticorewire","Altri servizi"];
+const rt = document.getElementById('rateTable');
+SERVIZI.forEach((nm,i)=>{
+  rt.insertAdjacentHTML('beforeend', `<div class="rate-row"><span>${nm}</span><input type="number" min="0" step="0.5" id="tf-${i}"><input type="number" min="0" step="0.5" id="tm-${i}"></div>`);
+});
+
+// Ordine delle schede: dopo un salvataggio riuscito si passa alla successiva.
+const PANELS = ['gestione','collab','salone'];
+function goTo(name){
+  document.querySelectorAll('nav.top button[data-p]').forEach(x=>x.setAttribute('aria-current', x.dataset.p===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('p-'+name).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function goNext(name){
+  const i = PANELS.indexOf(name);
+  if (i >= 0 && i < PANELS.length-1) goTo(PANELS[i+1]);
+}
+document.querySelectorAll('nav.top button[data-p]').forEach(b=>b.onclick=()=>goTo(b.dataset.p));
+
+// ============================================================
+// CONFIGURAZIONE — incolla qui l'URL del Web App di Google Apps Script
+// (vedi Magis_Plus_AppsScript_Code.gs) che salva i dati su Drive e invia
+// l'email di notifica. Lasciando la stringa vuota, il modulo scarica solo
+// il file JSON sul dispositivo di chi compila.
+// Esempio di URL dopo la distribuzione:
+// https://script.google.com/macros/s/AKfycb.../exec
+// ============================================================
+const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwfAPTbwnezW9FZApOKux4a8WmRAaD4ELwLOaFiyWFXJERRVL-vUuHZ8FjZkp26KIQg/exec";
+
+function setStatus(id, msg, err){ const e=document.getElementById(id); if(e){ e.textContent=msg; e.classList.toggle('err', !!err); } }
+function safe(s){ return (s||'modulo').toString().trim().replace(/[^a-z0-9À-ÿ_-]+/gi,'_'); }
+function fname(codice, nomeSalone){
+  return `Magis Plus Raccolta Dati - ${safe(nomeSalone)} (${safe(codice)}).json`;
+}
+
+// ---- HM2I: elenco a tendina + "Altro" ----
+const HM2I_LIST = [
+  "Massimiliano Zanchetta",
+  "Moris Galli",
+  "Oscar Nicodemo",
+  "Andrea Vettorato",
+  "Simone Albino",
+  "Leonardo Bini",
+  "Giovanni Castellani",
+  "Diego Tesconi",
+  "Luciano Epifori",
+  "Lorenzo De Sarno",
+  "Andrea Faccioli",
+  "Fortunato Criscio",
+  "Annalisa Macchiarulo",
+  "Antonio Giambuzzi",
+  "Giancarlo Di Pace",
+  "Massimiliano Fina",
+  "Aurelio La Cognata",
+];
+(function initHm2i(){
+  const sel = document.getElementById('hm2i-select');
+  HM2I_LIST.forEach(nome=>{
+    const o = document.createElement('option'); o.value = nome; o.textContent = nome;
+    sel.insertBefore(o, sel.lastElementChild);
+  });
+  sel.onchange = () => {
+    const altro = document.getElementById('hm2i-altro');
+    altro.style.display = sel.value === '__altro__' ? 'block' : 'none';
+    if (sel.value === '__altro__') altro.focus();
+  };
+})();
+function hm2iValue(){
+  const sel = document.getElementById('hm2i-select');
+  if (sel.value === '__altro__') return document.getElementById('hm2i-altro').value.trim();
+  return sel.value;
+}
+
+// ---- dati salone: condivisi, compilati una sola volta ----
+function datiSalone(){
+  return {
+    CODICE: document.getElementById('g-codice').value.trim(),
+    NOME_SALONE: document.getElementById('g-nome').value.trim(),
+    NOME_TITOLARE: document.getElementById('g-titolare').value.trim(),
+    HM2I: hm2iValue()
+  };
+}
+
+// Ritorna true solo se il salvataggio e' andato a buon fine.
+async function saveData(obj, statusId){
+  const s = datiSalone();
+  if (!s.CODICE) { setStatus(statusId, 'Inserisci il codice salone (in cima alla pagina) prima di salvare.', true); return false; }
+  const filename = fname(s.CODICE, s.NOME_SALONE);
+  const payload = Object.assign({}, s, obj);
+  if (!ENDPOINT_URL) {
+    setStatus(statusId, 'Salvataggio non configurato: manca l\'indirizzo del servizio (ENDPOINT_URL) in cima allo script.', true);
+    return false;
+  }
+  setStatus(statusId, 'Salvataggio in corso…');
+  try {
+    // NB: Google Apps Script non risponde alla richiesta preliminare CORS (OPTIONS) che il browser
+    // invia con "Content-Type: application/json". Con "text/plain" la richiesta e' "semplice", non
+    // c'e' preflight e il salvataggio funziona (lo script legge comunque il testo come JSON).
+    const res = await fetch(ENDPOINT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ filename, data: payload }),
+      redirect: 'follow'
+    });
+    let resp = null;
+    try { resp = await res.json(); } catch (e) { /* risposta non JSON: valuto solo l'HTTP */ }
+    if (!res.ok || (resp && resp.ok === false)) {
+      throw new Error((resp && resp.error) || ('HTTP ' + res.status));
+    }
+    setStatus(statusId, 'Salvataggio avvenuto con successo.');
+    setStatus('st-salvataggio', 'Salvataggio avvenuto con successo.');
+    return true;
+  } catch (e) {
+    const msg = `Salvataggio non riuscito: ${e.message || e}. Riprova.`;
+    setStatus(statusId, msg, true);
+    setStatus('st-salvataggio', msg, true);
+    return false;
+  }
+}
+
+// ---- Gestione e tariffe ----
+document.querySelector('[data-save="gestione"]').onclick = async () => {
+  const data = {
+    modulo: 'gestione_tariffe',
+    gestione: {
+      compensi_titolari: +document.getElementById('g-compensi').value || null,
+      stipendi_collaboratori: +document.getElementById('g-stipendi').value || null,
+      premi_collaboratori: +document.getElementById('g-premi').value || null,
+      affitti: +document.getElementById('g-affitti').value || null,
+      acquisto_prodotti: +document.getElementById('g-prodotti').value || null,
+      pubblicita: +document.getElementById('g-pubblicita').value || null,
+      formazione: +document.getElementById('g-formazione').value || null,
+      consulenza: +document.getElementById('g-consulenza').value || null,
+      utenze: +document.getElementById('g-utenze').value || null,
+      altro: +document.getElementById('g-altro').value || null,
+      mutui: +document.getElementById('g-mutui').value || null,
+      iva: +document.getElementById('g-iva').value || null,
+    },
+    tariffe: { data_vigore: document.getElementById('t-data').value, servizi: SERVIZI.map((nm,i)=>({
+      servizio: nm, femminile: +document.getElementById('tf-'+i).value || null, maschile: +document.getElementById('tm-'+i).value || null
+    }))}
+  };
+  if (await saveData(data, 'st-gestione')) goNext('gestione');
+};
+
+// ---- Analisi collaboratore (multi-scheda) ----
+const ops = [{}]; let cur = 0;
+const collabFieldIds = ['.c-nome','.c-ruolo','.c-ore','.c-proposte','.c-compenso'];
+function readOp(){
+  const o = {};
+  collabFieldIds.forEach(sel=>{ const el=document.querySelector(sel); o[sel]=el.value; });
+  o.cli = [...document.querySelectorAll('.c-cli')].map(c=>c.checked);
+  o.gg = [...document.querySelectorAll('.c-gg')].map(c=>c.checked);
+  o.scores = [...document.querySelectorAll('#p-collab .s')].map(i=>i.value);
+  return o;
+}
+function writeOp(o){
+  collabFieldIds.forEach(sel=>{ const el=document.querySelector(sel); el.value = (o[sel]||''); });
+  document.querySelectorAll('.c-cli').forEach((c,i)=>c.checked = !!(o.cli&&o.cli[i]));
+  document.querySelectorAll('.c-gg').forEach((c,i)=>c.checked = !!(o.gg&&o.gg[i]));
+  document.querySelectorAll('#p-collab .s').forEach((i,idx)=>i.value = (o.scores? o.scores[idx]:'') || '');
+}
+function renderTabs(){
+  const box = document.getElementById('opTabs'); box.innerHTML='';
+  ops.forEach((o,i)=>{
+    const b = document.createElement('button');
+    b.textContent = (document.querySelector('.c-nome') && i===cur ? document.querySelector('.c-nome').value : (o['.c-nome']||('Collaboratore '+(i+1)))) || ('Collaboratore '+(i+1));
+    b.setAttribute('aria-current', i===cur);
+    b.onclick = ()=>{ ops[cur]=readOp(); cur=i; writeOp(ops[cur]); renderTabs(); };
+    box.appendChild(b);
+  });
+}
+document.querySelector('[data-newop]').onclick = ()=>{
+  ops[cur] = readOp(); ops.push({}); cur = ops.length-1; writeOp(ops[cur]); renderTabs();
+};
+renderTabs();
+
+const ACC=['Saluto','Controllo appuntamento in agenda','Routine accoglienza','Comunicazione iniziative e promozioni'];
+const CON=['Connessione','Ascolto','Capacità di capire i desideri','Capacità di consigliare','Condivisione'];
+const TEC=['Lavaggio_Tempi','Lavaggio_Metodo','Lavaggio_Risultato','Colore_Tempi','Colore_Metodo','Colore_Risultato','Taglio_Tempi','Taglio_Metodo','Taglio_Risultato','Piega_Tempi','Piega_Metodo','Piega_Risultato'];
+const CONG=['Verifica soddisfazione','Propone/riconferma prodotti','Quantifica ed elenca servizi','Fissa prossimo appuntamento','Prende abbigliamento'];
+const IMG=['Look coerente','Capelli','Trucco/barba','Divisa','Eleganza e postura','Cura e pulizia spazi'];
+const SCORE_LABELS=[...ACC,...CON,...TEC,...CONG,...IMG];
+
+document.querySelector('[data-save="collab"]').onclick = async () => {
+  ops[cur] = readOp();
+  const out = { modulo:'analisi_collaboratore', collaboratori: ops.map(o=>({
+    NOME_OPERATORE:o['.c-nome'], RUOLO:o['.c-ruolo'], ORE_LAVORATE:+o['.c-ore']||null,
+    CLIENTELA: ['Femminile','Maschile'].filter((_,i)=>o.cli&&o.cli[i]),
+    GIORNI: ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'].filter((_,i)=>o.gg&&o.gg[i]),
+    punteggi: Object.fromEntries(SCORE_LABELS.map((lb,i)=>[lb, o.scores&&o.scores[i]!==''?+o.scores[i]:null])),
+    proposte_formative: o['.c-proposte'], compenso_incentivi: o['.c-compenso']
+  }))};
+  if (await saveData(out, 'st-collab')) goNext('collab');
+};
+
+// ---- Salone: immagine e sogno ----
+document.querySelector('[data-save="salone"]').onclick = async () => {
+  const scoreLabels=['Pulizia, ordine, organizzazione','Immagine','Armonia cromatica','Vetrina','Comunicazione web','Armonia ed energia percepita'];
+  const scores=[...document.querySelectorAll('#p-salone .grid.two')[0].querySelectorAll('.s')].map(i=>i.value);
+  const data = {
+    modulo:'immagine_sogno_salone',
+    numero_team:+document.getElementById('s-team').value||null,
+    immagine: Object.fromEntries(scoreLabels.map((lb,i)=>[lb, scores[i]!==''?+scores[i]:null])),
+    postazioni: { stilistico:+document.getElementById('pos-stilistico').value||null, tecnico:+document.getElementById('pos-tecnico').value||null,
+                  lavaggio:+document.getElementById('pos-lavaggio').value||null, consulenza:+document.getElementById('pos-consulenza').value||null },
+    materiale_salone: document.getElementById('s-materiale').value, materiale_vetrine: document.getElementById('s-vetrine').value,
+    presenza_social: document.getElementById('s-social').value, brand: document.getElementById('s-brand').value,
+    proposte_sviluppo: document.getElementById('s-proposte').value, sogno: document.getElementById('s-sogno').value
+  };
+  if (await saveData(data, 'st-salone')) goNext('salone');
+};
+</script>
+</body>
+</html>
