@@ -353,7 +353,7 @@ def _leggi_candidati(codice):
                 with open(path, encoding="utf-8-sig") as f:
                     d = json.load(f)
             except (OSError, ValueError) as e:
-                scartati.append((path, "non e' un JSON valido"))
+                scartati.append((path, f"JSON NON valido, il file e' rotto: {e}"))
                 continue
             if not isinstance(d, dict):
                 scartati.append((path, "contenuto non riconosciuto"))
