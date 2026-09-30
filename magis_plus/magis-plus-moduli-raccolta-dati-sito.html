@@ -149,7 +149,7 @@ footer.note{color:var(--muted);font-size:.8rem;margin-top:10px}
 </section>
 
 <div class="actions">
-  <button class="primary" data-save="gestione">Salva modulo Gestione e tariffe</button>
+  <button class="primary" data-save="gestione">AVANTI</button>
   <span class="status" id="st-gestione"></span>
 </div>
 </div>
@@ -251,7 +251,7 @@ footer.note{color:var(--muted);font-size:.8rem;margin-top:10px}
 
 <div class="actions">
   <button class="ghost" data-newop>+ Aggiungi un altro collaboratore</button>
-  <button class="primary" data-save="collab">Salva tutti i collaboratori</button>
+  <button class="primary" data-save="collab">AVANTI</button>
   <span class="status" id="st-collab"></span>
 </div>
 </div>
@@ -306,7 +306,7 @@ footer.note{color:var(--muted);font-size:.8rem;margin-top:10px}
 </section>
 
 <div class="actions">
-  <button class="primary" data-save="salone">Salva Immagine e sogno del salone</button>
+  <button class="primary" data-save="salone">Salva e invia</button>
   <span class="status" id="st-salone"></span>
 </div>
 </div>
@@ -398,12 +398,28 @@ function datiSalone(){
   };
 }
 
+// ---- notifica finale: quando tutti e tre i moduli sono stati salvati ----
+const NOTIFICA_A = "info@monacelliitaly.it";
+const MODULI = ['gestione','collab','salone'];
+const salvati = new Set();      // moduli salvati con successo in questa sessione
+let notificaInviata = false;
+function costruisciNotifica(s){
+  return {
+    to: NOTIFICA_A,
+    subject: `dati per MAGIS PLUS del cliente ${s.CODICE} pronti per essere elaborati`,
+    body: `Codice salone: ${s.CODICE}\nNome salone: ${s.NOME_SALONE}\nNome titolare: ${s.NOME_TITOLARE}\nHM2I: ${s.HM2I}`
+  };
+}
+
 // Ritorna true solo se il salvataggio e' andato a buon fine.
-async function saveData(obj, statusId){
+async function saveData(obj, statusId, modulo){
   const s = datiSalone();
   if (!s.CODICE) { setStatus(statusId, 'Inserisci il codice salone (in cima alla pagina) prima di salvare.', true); return false; }
   const filename = fname(s.CODICE, s.NOME_SALONE);
   const payload = Object.assign({}, s, obj);
+  // con questo salvataggio i tre moduli risultano completi? Allora chiedo anche l'invio dell'email
+  const completa = !notificaInviata && new Set([...salvati, modulo]).size === MODULI.length;
+  const notifica = completa ? costruisciNotifica(s) : undefined;
   if (!ENDPOINT_URL) {
     setStatus(statusId, 'Salvataggio non configurato: manca l\'indirizzo del servizio (ENDPOINT_URL) in cima allo script.', true);
     return false;
@@ -416,7 +432,7 @@ async function saveData(obj, statusId){
     const res = await fetch(ENDPOINT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ filename, data: payload }),
+      body: JSON.stringify({ filename, data: payload, notifica }),
       redirect: 'follow'
     });
     let resp = null;
@@ -424,8 +440,20 @@ async function saveData(obj, statusId){
     if (!res.ok || (resp && resp.ok === false)) {
       throw new Error((resp && resp.error) || ('HTTP ' + res.status));
     }
-    setStatus(statusId, 'Salvataggio avvenuto con successo.');
-    setStatus('st-salvataggio', 'Salvataggio avvenuto con successo.');
+    salvati.add(modulo);
+    let msg = 'Salvataggio avvenuto con successo.';
+    let avviso = false;
+    if (completa) {
+      if (resp && resp.mail === true) {
+        notificaInviata = true;
+        msg += ' Tutti i moduli sono completati: abbiamo avvisato Monacelli Italy.';
+      } else {
+        avviso = true;
+        msg += ' Attenzione: non risulta confermato l\'invio dell\'email di notifica a ' + NOTIFICA_A + '.';
+      }
+    }
+    setStatus(statusId, msg, avviso);
+    setStatus('st-salvataggio', msg, avviso);
     return true;
   } catch (e) {
     const msg = `Salvataggio non riuscito: ${e.message || e}. Riprova.`;
@@ -457,7 +485,7 @@ document.querySelector('[data-save="gestione"]').onclick = async () => {
       servizio: nm, femminile: +document.getElementById('tf-'+i).value || null, maschile: +document.getElementById('tm-'+i).value || null
     }))}
   };
-  if (await saveData(data, 'st-gestione')) goNext('gestione');
+  if (await saveData(data, 'st-gestione', 'gestione')) goNext('gestione');
 };
 
 // ---- Analisi collaboratore (multi-scheda) ----
@@ -508,7 +536,7 @@ document.querySelector('[data-save="collab"]').onclick = async () => {
     punteggi: Object.fromEntries(SCORE_LABELS.map((lb,i)=>[lb, o.scores&&o.scores[i]!==''?+o.scores[i]:null])),
     proposte_formative: o['.c-proposte'], compenso_incentivi: o['.c-compenso']
   }))};
-  if (await saveData(out, 'st-collab')) goNext('collab');
+  if (await saveData(out, 'st-collab', 'collab')) goNext('collab');
 };
 
 // ---- Salone: immagine e sogno ----
@@ -525,7 +553,7 @@ document.querySelector('[data-save="salone"]').onclick = async () => {
     presenza_social: document.getElementById('s-social').value, brand: document.getElementById('s-brand').value,
     proposte_sviluppo: document.getElementById('s-proposte').value, sogno: document.getElementById('s-sogno').value
   };
-  if (await saveData(data, 'st-salone')) goNext('salone');
+  if (await saveData(data, 'st-salone', 'salone')) goNext('salone');
 };
 </script>
 </body>
