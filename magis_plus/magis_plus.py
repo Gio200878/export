@@ -43,6 +43,10 @@ OUT_DIR = os.path.join(HERE, "output")
 MODELLO_PATH = os.path.join(HERE, "magis_plus_pagine_modello.pdf")
 MODELLO_PAGINE = [2, 3, 4, 5, 6, 7, 11, 13, 14, 19, 20, 36]  # numero pagina nel modello originale
 
+ANNO_PSD = 2026
+MESI_IT = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
+           "settembre", "ottobre", "novembre", "dicembre"]
+
 LEVELS = [4, 5, 6, 7, 8, 9]  # colonne delle tabelle "GIUSTI PARAMETRI" / "MEDIA PASSAGGI"
 
 
@@ -299,7 +303,14 @@ def calcola(genere, op, pas, gg, mesi, att, tar_sal, par, tariffe_giuste, stelle
             fic.append((nm, tot, u, None, u, tot * u))
     tot_fic = sum(f[5] for f in fic)
 
-    return dict(genere=genere, ide=ide, eff=eff, op=op, pas=pas, gg=gg, mesi=mesi,
+    pct_ide = dict(Cleansing=par["Cleansing"][i], Taglio=par["Taglio"][i], Colore=par["Colore"][i],
+                   GOLD20=par["Gold"][i], Trattamenti=par["Trattamenti"][i], Mantenimento=par["Mac"][i])
+    if genere == "F":
+        pct_ide["Styling"] = par["Styling"][i] if par["Styling"] else 0
+    else:
+        pct_ide["Barba"] = par["Barba"][i] if par["Barba"] else 0
+
+    return dict(genere=genere, media_gg=par["media"][i], pct_ide=pct_ide, ide=ide, eff=eff, op=op, pas=pas, gg=gg, mesi=mesi,
                 stelle=stelle_target, righe=righe, fic=fic, fic_tot=tot_fic,
                 fic_ide=(tot_fic / ide if ide else None), sty_att_tot=sty_att_tot)
 
@@ -470,12 +481,48 @@ tr.tot td{font-weight:700;border-bottom:0}
 .pillars.four{grid-template-columns:repeat(4,1fr)}
 .pillars div{border-top:2px solid #E8C766;padding-top:3mm;font-size:9pt}
 .pillars b{display:block;font-size:12pt;margin-bottom:1mm}
-.nav{position:absolute;left:0;right:0;bottom:0;height:12mm;display:flex;align-items:center;gap:3mm;padding:0 15mm;border-top:1px solid rgba(255,255,255,.15);font-size:8pt}
+.nav{position:absolute;left:0;right:0;bottom:0;height:13.2mm;display:flex;align-items:center;gap:5.6mm;padding:0 11mm 0 14.4mm;background:rgba(8,11,36,.55);border-top:1px solid rgba(255,255,255,.12);font-size:8.3pt}
 .nav a{color:#A9ADCF;text-decoration:none}
 .nav a:first-child{color:#E8C766;font-weight:700}
-.nav .pg{margin-left:auto;color:#E8C766;font-weight:700;font-size:11pt}
+.nav .pg{margin-left:auto;color:#E8C766;font-family:"BSD",sans-serif;font-weight:600;font-size:14pt}
 .page.cover-bg .in{padding:0}
 .page.back-bg .in{padding:0}
+.sv{padding:0 1mm}
+.ph{font-size:38pt;margin:.5mm 0 3.2mm}
+.ph b{color:#EEEDF8}
+p.lede.lp{font-size:11pt;margin:0 0 5.7mm;max-width:none}
+.k4{display:grid;grid-template-columns:repeat(4,1fr);gap:.3mm;background:rgba(255,255,255,.14);border:.3mm solid rgba(255,255,255,.14);border-radius:3mm;overflow:hidden}
+.k4 div{background:#1A2158;padding:4.4mm 4.5mm 3.2mm;height:26.7mm}
+.k4 b{display:block;font-family:"BSD",sans-serif;font-size:19pt;font-weight:500;color:#EEEDF8;line-height:1.1}
+.k4 span{font-size:8.8pt;color:#A9ADCF;display:block;margin-top:.3mm;line-height:1.5}
+.k3{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm;margin-top:3.2mm}
+.k3>div{background:rgba(255,255,255,.059);border:.3mm solid rgba(255,255,255,.14);border-radius:3mm;padding:3.6mm 4mm;height:28mm}
+.k3>div.gd{border-color:rgba(232,199,102,.5)}
+.k3 span{font-size:8.5pt;color:#A9ADCF;display:block}
+.k3 b{display:block;font-family:"BSD",sans-serif;font-size:20pt;font-weight:500;color:#EEEDF8;line-height:1.1;margin:.3mm 0 1.5mm}
+.k3 b.fiche{color:#E8C766;white-space:nowrap}
+.k3 b em{font-family:"Fig",sans-serif;font-style:normal;font-size:14pt}
+.k3 small{font-size:7.8pt;color:#A9ADCF;display:block;line-height:1.35}
+.wc{background:#fff;border-radius:4mm;margin-top:3.8mm;padding:4.4mm 5mm 3.4mm;color:#1D2233}
+.wh{font-size:13pt;font-weight:700;margin-bottom:4.5mm}
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:3.3mm 4mm}
+.sc{height:31.1mm}
+.st{font-size:11pt;font-weight:700;height:6.9mm;line-height:1.3}
+.sr{display:flex;align-items:center}
+.dn{position:relative;width:24.8mm;height:24.8mm;flex:none}
+.dc{position:absolute;left:0;top:0;width:24.8mm;height:24.8mm;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700}
+.dc i{font-style:normal;font-weight:400;font-size:5pt;color:#8A8FA3;margin-top:1.3mm}
+.lg{margin-left:2.6mm}
+.le{display:flex;align-items:flex-start}
+.le+.le{margin-top:1.7mm}
+.dot{width:2.4mm;height:2.4mm;border-radius:50%;margin:1.2mm 1.2mm 0 0;flex:none}
+.lv{font-size:10.5pt;font-weight:700;line-height:1.15;white-space:nowrap}
+.lv small{font-size:7.3pt;font-weight:400;color:#6B7086}
+.ls{font-size:7.3pt;color:#6B7086;line-height:1.2;white-space:nowrap}
+.ll{font-size:7.8pt;color:#6B7086;line-height:1.2}
+.wf{font-size:7.8pt;color:#6B7086;margin-top:2mm}
+.pills{display:flex;gap:2.7mm;margin-top:6.8mm}
+.pills a{border:.75pt solid #E8C766;border-radius:99px;color:#E8C766;font-size:9pt;font-weight:600;text-decoration:none;height:9.1mm;line-height:8.6mm;padding:0 4.3mm}
 .cover{height:257mm;display:flex;flex-direction:column;justify-content:flex-end;padding:0 15mm 16mm}
 .cover .kick{color:#EDEBFA;font-size:9pt;margin-bottom:2mm;text-shadow:0 1px 6px rgba(0,0,0,.7)}
 .cover .big{font-family:"BSD",sans-serif;font-size:34pt;font-weight:800;line-height:.95;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.7)}
@@ -483,13 +530,13 @@ tr.tot td{font-weight:700;border-bottom:0}
 .cover .sub{font-size:9pt;color:#EDEBFA;margin-top:2mm;text-shadow:0 1px 6px rgba(0,0,0,.7)}
 """
 
-NAV = [("svc-F", "Femminile"), ("svc-M", "Maschile")]
+NAV = [("indice", "Indice")]
 
 
 def pg(body, pid, title, nav=True, extra_cls=""):
     navhtml = ""
     if nav:
-        navhtml = '<div class="nav">' + "".join(f'<a href="#{i}">{t}</a>' for i, t in NAV) + f'<span class="pg">{title}</span></div>'
+        navhtml = '<div class="nav">' + "".join(f'<a href="#{i}">{t}</a>' for i, t in NAV) + '<span class="pg">@@PG@@</span></div>'
     cls = ("page " + extra_cls).strip()
     return f'<section class="{cls}" id="{pid}"><div class="in">{body}</div>{navhtml}</section>'
 
@@ -511,9 +558,102 @@ def tabella_fiche(d):
     return f"<table><thead><tr><th>Servizio</th><th>Totale ideale</th><th>Tariffa usata</th><th>Contributo</th></tr></thead><tbody>{rows}</tbody></table>"
 
 
+def donut_svg(att, ide):
+    """Anello: blu = attuale rispetto all'ideale; se l'attuale supera l'ideale l'anello e' tutto blu
+    e l'eccedenza e' un arco verde. Parte da ore 12, in senso orario."""
+    r, c = 10.49, 2 * 3.14159265 * 10.49
+    if att is None or not ide:
+        blu = verde = 0
+    else:
+        blu = min(att / ide, 1)
+        verde = min(max(att - ide, 0) / ide, 1)
+    def arco(frac, col):
+        if frac <= 0:
+            return ""
+        return (f'<circle cx="12.4" cy="12.4" r="{r}" fill="none" stroke="{col}" stroke-width="1.125" '
+                f'stroke-dasharray="{frac * c:.3f} {c:.3f}" transform="rotate(-90 12.4 12.4)"/>')
+    return (f'<svg viewBox="0 0 24.8 24.8" style="width:24.8mm;height:24.8mm;flex:none">'
+            f'<circle cx="12.4" cy="12.4" r="{r}" fill="none" stroke="#E5E7EE" stroke-width="1.125"/>'
+            f'{arco(blu, "#1E48A8")}{arco(verde, "#2DB35A")}</svg>')
+
+
+def scheda_servizio(nome, att_tot, att_nota, ide_tot, ide_pct):
+    """att_nota: testo tra parentesi sotto/accanto al totale attuale (es. '99%' o '292,5/mese')."""
+    if att_tot is None:
+        diff = None
+        centro = '<span style="font-size:13.5pt;color:#8A8FA3">—</span>'
+    else:
+        diff = round(att_tot - ide_tot)
+        col = "#2DB35A" if diff > 0 else "#E8453C"
+        testo = ("+" if diff > 0 else "−" if diff < 0 else "") + n0(abs(diff))
+        centro = f'<span style="font-size:{13.5 if len(testo) <= 4 else 11.3}pt;color:{col}">{testo}</span>'
+    att_val = n0(att_tot) if att_tot is not None else "—"
+    if att_nota and att_nota.endswith("mese)"):
+        att_html = (f'<div class="lv">{att_val}</div><div class="ls">{att_nota}</div>')
+    else:
+        att_html = f'<div class="lv">{att_val}<small> {att_nota or ""}</small></div>'
+    return f"""<div class="sc"><div class="st">{nome}</div>
+      <div class="sr"><div class="dn">{donut_svg(att_tot, ide_tot)}<div class="dc">{centro}<i>Differenza</i></div></div>
+      <div class="lg">
+        <div class="le"><span class="dot" style="background:#1E48A8"></span><div>{att_html}<div class="ll">Attuale</div></div></div>
+        <div class="le"><span class="dot" style="background:#E5E7EE"></span><div><div class="lv">{n0(ide_tot)}<small> ({ide_pct:.0f}%)</small></div><div class="ll">Ideale</div></div></div>
+      </div></div></div>"""
+
+
+def pagina_sintesi(nome, gen, d, cli, codice):
+    """Pagina 'Sviluppo Femminile/Maschile': sintesi con passaggi, presenze, fiche e differenza per servizio."""
+    mesi = int(round(d["mesi"]))
+    periodo = f"gennaio–{MESI_IT[min(max(mesi, 1), 12) - 1]} {ANNO_PSD}" if mesi > 1 else f"gennaio {ANNO_PSD}"
+    salone = (cli["salone"] or "").strip().title()
+    op, gg, ide, eff = d["op"], d["gg"], d["ide"], d["eff"]
+    per_op = d["pas"] / (op * gg) if op * gg else 0
+    if gen == "F":
+        eff_nota = f"{n0(ide)} × (1 − 10%). Media mensile {n0(eff / mesi)}, {n1(eff / (op * gg))} al giorno per operatore"
+    else:
+        eff_nota = f"Uguali alle ideali. Media mensile {n0(eff / mesi)}, {n1(eff / (op * gg))} al giorno per operatore"
+    st = d["stelle"]
+    schede = []
+    for nm, chiave in [("Cleansing", "Cleansing"), ("Taglio", "Taglio"), ("Colore", "Colore"), ("GOLD20", "GOLD20"),
+                       ("Trattamenti", "Trattamenti"), ("Styling", "Styling"), ("Barba", "Barba"),
+                       ("Mantenimento", "Mantenimento (PROD)")]:
+        riga = next((r for r in d["righe"] if r[0] == chiave), None)
+        if riga is None:
+            continue
+        pct_att, tot_ide = riga[1], riga[2]
+        if nm == "Styling":
+            tot_att = d["sty_att_tot"] if d["sty_att_tot"] else None
+            nota = f"({n1(tot_att / mesi)}/mese)" if tot_att is not None else ""
+        else:
+            tot_att = pct_att * d["pas"] if pct_att is not None else None
+            nota = f"({pct_att * 100:.0f}%)" if pct_att is not None else ""
+        schede.append(scheda_servizio(nm, tot_att, nota, tot_ide, d["pct_ide"][nm]))
+    return pg(f"""<div class="sv">
+      <h1 class="ph">Sviluppo <b>{nome}</b></h1>
+      <p class="lede lp">Cliente {codice}, {salone}. Periodo PSD {periodo}, {mesi} mesi rilevati. Obiettivo {st} stelle.</p>
+      <div class="k4">
+        <div><b>{n0(d['pas'])}</b><span>Passaggi nel periodo</span></div>
+        <div><b>{n2(op)}</b><span>Operatori</span></div>
+        <div><b>{n2(per_op)}</b><span>Media giornaliera per operatore</span></div>
+        <div><b>{n0(gg)}</b><span>Giorni lavorativi nel periodo</span></div>
+      </div>
+      <div class="k3">
+        <div><span>Presenze ideali, {st} stelle</span><b>{n0(ide)}</b>
+          <small>{n2(op)} op. × {n0(gg)} gg × {n1(d['media_gg'])} al giorno. Media mensile {n0(ide / mesi)}</small></div>
+        <div><span>Presenze effettive</span><b>{n0(eff)}</b><small>{eff_nota}</small></div>
+        <div class="gd"><span>Fiche media</span><b class="fiche">{eur(d.get('fiche_att'))} <em>→</em> {eur(d['fic_ide'])}</b>
+          <small>Attuale → ideale {st} stelle</small></div>
+      </div>
+      <div class="wc"><div class="wh">Monacelli Quality Salon</div>
+        <div class="sg">{"".join(schede)}</div>
+        <div class="wf">Totali del periodo: attuale e ideale. Tra parentesi la percentuale attuale e quella ideale a {st} stelle.</div>
+      </div>
+      <div class="pills"><a href="#tab-{gen}">Tabella dei servizi e calcolo fiche</a><a href="#stelle-{gen}">Cammino verso le stelle</a></div></div>
+    """, f"svc-{gen}", f"Sviluppo {nome}")
+
+
 def pagina_sviluppo(nome, gen, d):
     return pg(f"""
-      <h2>Sviluppo <b>{nome}</b></h2>
+      <h2>Servizi e fiche <b>{nome}</b></h2>
       <p class="lede">Obiettivo {d['stelle']} stelle · {d['mesi']:.0f} mesi rilevati · {d['gg']:.0f} giorni lavorativi.</p>
       <div class="kpis">
         <div><b>{n0(d['pas'])}</b><span>Passaggi nel periodo</span></div>
@@ -525,7 +665,7 @@ def pagina_sviluppo(nome, gen, d):
       {tabella_servizi(d)}
       <h3>Fiche media ideale</h3>
       {tabella_fiche(d)}
-    """, f"svc-{gen}", nome)
+    """, f"tab-{gen}", nome)
 
 
 def pagina_stelle(nome, gen, righe_livelli, fic_livelli, pot_livelli, stelle_target):
@@ -570,7 +710,7 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
 
     # barra di navigazione in fondo pagina: stesse voci principali, sempre coerente
     global NAV
-    NAV = [("cosa", "Cos\'e\' Magis Plus")]
+    NAV = [("indice", "Indice"), ("cosa", "Cos\'e\' Magis Plus")]
     if html_sogno:
         NAV.append(("sogno", "Il mio sogno"))
     if html_immagine:
@@ -620,7 +760,9 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
                           "sviluppo", "Sviluppo"), "Progetto di sviluppo: introduzione")
 
     if dF:
-        add(pagina_sviluppo("Femminile", "F", dict(dF, fiche_att=cli["fiche_att_f"])), "Sviluppo Femminile")
+        dF_ = dict(dF, fiche_att=cli["fiche_att_f"])
+        add(pagina_sintesi("Femminile", "F", dF_, cli, codice), "Sviluppo Femminile")
+        add(pagina_sviluppo("Femminile", "F", dF_), "Servizi e fiche Femminile")
         livelli = {k: [] for k in ["Cleansing", "Colore", "Gold", "Mac", "Taglio", "Trattamenti"]}
         pot, fic = [], []
         for s in LEVELS:
@@ -632,7 +774,9 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
         add(pagina_stelle("Femminile", "F", livelli, fic, pot, dF["stelle"]), "Femminile: cammino verso le stelle")
 
     if dM:
-        add(pagina_sviluppo("Maschile", "M", dict(dM, fiche_att=cli["fiche_att_m"])), "Sviluppo Maschile")
+        dM_ = dict(dM, fiche_att=cli["fiche_att_m"])
+        add(pagina_sintesi("Maschile", "M", dM_, cli, codice), "Sviluppo Maschile")
+        add(pagina_sviluppo("Maschile", "M", dM_), "Servizi e fiche Maschile")
         livelli = {k: [] for k in ["Cleansing", "Colore", "Gold", "Mac", "Taglio", "Trattamenti"]}
         pot, fic = [], []
         for s in LEVELS:
@@ -658,6 +802,16 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
     add(pg(teoria.pagina_academy(), "academy", "Academy"), "Monacelli Happiness Academy")
     # ultima pagina identica al modello (pagina 36: contatti Monacelli Italy)
     add_modello([36], pg('', "back", "Contatti", nav=False, extra_cls="back-bg"), "Contatti")
+    # numeri di pagina nella barra in basso (le pagine "M" del modello possono essere piu' di una)
+    n = 0
+    for k, it in enumerate(pagine):
+        n_prec = n
+        n += 1 if it[0] == "H" else len(it[1])
+        num = str(n_prec + 1)
+        if it[0] == "H":
+            pagine[k] = ("H", it[1].replace("@@PG@@", num), it[2])
+        else:
+            pagine[k] = ("M", it[1], it[2].replace("@@PG@@", num), it[3])
     return pagine
 
 
