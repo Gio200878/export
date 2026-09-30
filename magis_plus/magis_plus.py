@@ -319,39 +319,82 @@ def calcola(genere, op, pas, gg, mesi, att, tar_sal, par, tariffe_giuste, stelle
 # --------------------------------------------------------------- moduli raccolta dati (facoltativi)
 # Il campo "modulo" scritto dentro ai file JSON dai moduli di raccolta dati sul sito
 MODULI_JSON = {"Immagine e Sogno": "immagine_sogno_salone", "Analisi Collaboratori": "analisi_collaboratore"}
+_CACHE_JSON = {}
+
+
+def _cartelle_ricerca():
+    """Cartella dello script (con tutte le sottocartelle) + la cartella Download dell'utente."""
+    out = [(HERE, True)]
+    dl = os.path.join(os.path.expanduser("~"), "Downloads")
+    if os.path.isdir(dl) and os.path.abspath(dl) != os.path.abspath(HERE):
+        out.append((dl, False))
+    return out
+
+
+def _leggi_candidati(codice):
+    """Tutti i file .json/.txt che sembrano moduli di raccolta dati del salone `codice`.
+    Ritorna (validi, scartati): validi = [(mtime, percorso, dati)], scartati = [(percorso, motivo)]."""
+    codice = str(codice).strip()
+    validi, scartati, visti = [], [], set()
+    for cartella, ricorsiva in _cartelle_ricerca():
+        percorsi = []
+        for ext in ("json", "txt"):
+            pat = os.path.join(cartella, "**", f"*.{ext}") if ricorsiva else os.path.join(cartella, f"*.{ext}")
+            percorsi += glob.glob(pat, recursive=ricorsiva)
+        for path in percorsi:
+            nome = os.path.basename(path)
+            if os.path.abspath(path) in visti or os.sep + "output" + os.sep in path:
+                continue
+            visti.add(os.path.abspath(path))
+            nome_ok = f"({codice})" in nome or f"_{codice}." in nome
+            if not nome_ok and "raccolta dati" not in nome.lower():
+                continue
+            try:
+                with open(path, encoding="utf-8-sig") as f:
+                    d = json.load(f)
+            except (OSError, ValueError) as e:
+                scartati.append((path, "non e' un JSON valido"))
+                continue
+            if not isinstance(d, dict):
+                scartati.append((path, "contenuto non riconosciuto"))
+                continue
+            cod_file = str(d.get("CODICE", d.get("codice", ""))).strip()
+            if (cod_file or not nome_ok) and cod_file != codice:
+                if nome_ok or cod_file:
+                    scartati.append((path, f"codice nel file = '{cod_file}', atteso '{codice}'"))
+                continue
+            validi.append((os.path.getmtime(path), path, d))
+    return validi, scartati
+
+
+def _e_modulo(d, tipo):
+    """Riconosce il tipo di modulo dal campo 'modulo' o, se manca, dai campi presenti."""
+    if tipo == "Analisi Collaboratori":
+        return d.get("modulo") == MODULI_JSON[tipo] or isinstance(d.get("collaboratori"), list)
+    return d.get("modulo") == MODULI_JSON[tipo] or any(k in d for k in ("sogno", "immagine", "postazioni", "numero_team"))
 
 
 def trova_json_modulo(codice, tipo):
-    """Cerca il JSON del modulo `tipo` per il salone `codice` nella cartella dello script e in tutte
-    le sue sottocartelle (es. una sottocartella "Magis Plus" dove hai scaricato i file da Drive).
-    I moduli del sito si chiamano 'Magis Plus Raccolta Dati - <nome> (<codice>).json' e hanno lo
-    stesso nome per tutti e tre i moduli: si distinguono dal campo "modulo" scritto nel file
-    (vecchi file con il tipo nel nome, es. '... - Analisi Collaboratori.json', sono ancora accettati).
-    Se ci sono piu' file validi, vince il piu' recente."""
-    codice = str(codice).strip()
-    modulo = MODULI_JSON[tipo]
-    candidati = glob.glob(os.path.join(HERE, "**", "*.json"), recursive=True)
-    validi = []
-    for path in candidati:
-        nome = os.path.basename(path)
-        if f"({codice})" not in nome:
-            continue
-        try:
-            with open(path, encoding="utf-8-sig") as f:
-                d = json.load(f)
-        except (OSError, ValueError):
-            continue
-        if not isinstance(d, dict):
-            continue
-        cod_file = str(d.get("CODICE", "")).strip()
-        if cod_file and cod_file != codice:
-            continue
-        if d.get("modulo") == modulo or (not d.get("modulo") and tipo.lower() in nome.lower()):
-            validi.append((os.path.getmtime(path), d))
-    if not validi:
+    """Cerca il JSON del modulo `tipo` del salone `codice` nella cartella dello script (sottocartelle
+    comprese) e nella cartella Download. I moduli del sito si chiamano
+    'Magis Plus Raccolta Dati - <nome> (<codice>).json' e hanno lo stesso nome per tutti e tre i moduli:
+    si distinguono da cio' che contengono. Se ci sono piu' file validi, vince il piu' recente."""
+    chiave = str(codice).strip()
+    if chiave not in _CACHE_JSON:
+        validi, scartati = _leggi_candidati(chiave)
+        _CACHE_JSON[chiave] = (validi, scartati)
+        print(f"\nRicerca moduli di raccolta dati per il cliente {chiave} in: "
+              + ", ".join(c for c, _ in _cartelle_ricerca()))
+        for _t, p, _d in validi:
+            print(f"   trovato: {p}")
+        for p, motivo in scartati[:10]:
+            print(f"   scartato: {p} ({motivo})")
+    validi, _ = _CACHE_JSON[chiave]
+    trovati = sorted([(t, d) for t, _p, d in validi if _e_modulo(d, tipo)], key=lambda x: x[0], reverse=True)
+    if not trovati:
+        print(f"   ATTENZIONE: nessun file per il modulo '{tipo}' del cliente {chiave}: quelle pagine non verranno inserite.")
         return None
-    validi.sort(key=lambda x: x[0], reverse=True)
-    return validi[0][1]
+    return trovati[0][1]
 
 
 FONTFACE_CSS = (
