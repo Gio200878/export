@@ -316,22 +316,41 @@ def calcola(genere, op, pas, gg, mesi, att, tar_sal, par, tariffe_giuste, stelle
 
 
 # --------------------------------------------------------------- moduli raccolta dati (facoltativi)
+# Il campo "modulo" scritto dentro ai file JSON dai moduli di raccolta dati sul sito
+MODULI_JSON = {"Immagine e Sogno": "immagine_sogno_salone", "Analisi Collaboratori": "analisi_collaboratore"}
+
+
 def trova_json_modulo(codice, tipo):
-    """Cerca 'Magis Plus Raccolta Dati - <nome> (<codice>) - <tipo>.json' nella cartella dello
-    script E in tutte le sue sottocartelle (es. una sottocartella "Magis Plus" dove hai scaricato
-    i file da Drive)."""
-    pattern = f"*({codice})*{tipo}*.json"
-    # 1) ricerca diretta nella cartella dello script (più veloce, caso più comune)
-    trovati = glob.glob(os.path.join(HERE, pattern))
-    # 2) se non trovato, ricerca in ogni sottocartella, a qualunque livello
-    if not trovati:
-        trovati = glob.glob(os.path.join(HERE, "**", pattern), recursive=True)
-    if not trovati:
+    """Cerca il JSON del modulo `tipo` per il salone `codice` nella cartella dello script e in tutte
+    le sue sottocartelle (es. una sottocartella "Magis Plus" dove hai scaricato i file da Drive).
+    I moduli del sito si chiamano 'Magis Plus Raccolta Dati - <nome> (<codice>).json' e hanno lo
+    stesso nome per tutti e tre i moduli: si distinguono dal campo "modulo" scritto nel file
+    (vecchi file con il tipo nel nome, es. '... - Analisi Collaboratori.json', sono ancora accettati).
+    Se ci sono piu' file validi, vince il piu' recente."""
+    codice = str(codice).strip()
+    modulo = MODULI_JSON[tipo]
+    candidati = glob.glob(os.path.join(HERE, "**", "*.json"), recursive=True)
+    validi = []
+    for path in candidati:
+        nome = os.path.basename(path)
+        if f"({codice})" not in nome:
+            continue
+        try:
+            with open(path, encoding="utf-8-sig") as f:
+                d = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if not isinstance(d, dict):
+            continue
+        cod_file = str(d.get("CODICE", "")).strip()
+        if cod_file and cod_file != codice:
+            continue
+        if d.get("modulo") == modulo or (not d.get("modulo") and tipo.lower() in nome.lower()):
+            validi.append((os.path.getmtime(path), d))
+    if not validi:
         return None
-    # se ci sono più corrispondenze, prende la più recente
-    trovati.sort(key=os.path.getmtime, reverse=True)
-    with open(trovati[0], encoding="utf-8") as f:
-        return json.load(f)
+    validi.sort(key=lambda x: x[0], reverse=True)
+    return validi[0][1]
 
 
 def pagina_sogno(dati_salone):
@@ -387,9 +406,9 @@ def _bars(punteggi, chiavi):
     for k in chiavi:
         v = punteggi.get(k)
         if v is None:
-            out += f'<div style="display:flex;justify-content:space-between;padding:1mm 0;font-size:9pt"><span>{k}</span><span>—</span></div>'
+            out += f'<div style="display:flex;justify-content:space-between;padding:.5mm 0;font-size:9pt"><span>{k}</span><span>—</span></div>'
         else:
-            out += (f'<div style="display:flex;align-items:center;gap:3mm;padding:1mm 0;font-size:9pt">'
+            out += (f'<div style="display:flex;align-items:center;gap:3mm;padding:.5mm 0;font-size:9pt">'
                      f'<span style="flex:1">{k}</span><span style="flex:0 0 40mm;height:2.2mm;background:rgba(255,255,255,.12);'
                      f'border-radius:99px;overflow:hidden"><i style="display:block;height:100%;width:{v*10}%;'
                      f'background:{"#FF7C99" if v==0 else "#A08BFF"};border-radius:99px"></i></span>'
@@ -423,15 +442,16 @@ def pagina_persona(c, idx, tot, ancora_prec, ancora_succ):
     p = c.get("punteggi", {})
     tec_rows = ""
     for s in TEC_SERVIZI:
-        cells = "".join(f'<td style="text-align:center;padding:1.5mm">{p.get(f"{s}_{k}", "—") if p.get(f"{s}_{k}") is not None else "—"}</td>'
+        cells = "".join(f'<td style="text-align:center;padding:.8mm">{p.get(f"{s}_{k}", "—") if p.get(f"{s}_{k}") is not None else "—"}</td>'
                          for k in ("Tempi", "Metodo", "Risultato"))
-        tec_rows += f'<tr><td style="padding:1.5mm">{s}</td>{cells}</tr>'
+        tec_rows += f'<tr><td style="padding:.8mm 1.5mm">{s}</td>{cells}</tr>'
     nav = ""
     if ancora_prec:
         nav += f'<a href="#{ancora_prec}" style="margin-right:4mm">← precedente</a>'
     if ancora_succ:
         nav += f'<a href="#{ancora_succ}">successivo →</a>'
-    return f"""<h2>{c.get("NOME_OPERATORE","")}</h2>
+    return f"""<div class="persona"><div style="position:absolute;top:18mm;right:15mm;font-size:8.5pt">{nav}</div>
+      <h2>{c.get("NOME_OPERATORE","")}</h2>
       <p class="lede">{c.get("RUOLO","")} · {", ".join(c.get("CLIENTELA", []) or [])}</p>
       <h3>Accoglienza</h3>{_bars(p, SCORE_GROUPS["acc"])}
       <h3>Consulenza</h3>{_bars(p, SCORE_GROUPS["cons"])}
@@ -440,8 +460,7 @@ def pagina_persona(c, idx, tot, ancora_prec, ancora_succ):
       <tbody>{tec_rows}</tbody></table>
       <h3>Congedo</h3>{_bars(p, SCORE_GROUPS["cong"])}
       <h3>Immagine personale</h3>{_bars(p, SCORE_GROUPS["img"])}
-      <div class="callout"><b>Proposta formativa.</b> {c.get("proposte_formative") or "da completare."}</div>
-      <p class="lede" style="margin-top:5mm">{nav}</p>"""
+      <div class="callout"><b>Proposta formativa.</b> {c.get("proposte_formative") or "da completare."}</div></div>"""
 
 
 FONTFACE_CSS = (
@@ -488,6 +507,9 @@ tr.tot td{font-weight:700;border-bottom:0}
 .page.cover-bg .in{padding:0}
 .page.back-bg .in{padding:0}
 .sv{padding:0 1mm}
+.persona h3{margin:3.5mm 0 1.5mm;padding-top:2.5mm}
+.persona .callout{margin-top:3mm}
+.persona a{color:#E8C766;text-decoration:none}
 .ph{font-size:38pt;margin:.5mm 0 3.2mm}
 .ph b{color:#EEEDF8}
 p.lede.lp{font-size:11pt;margin:0 0 5.7mm;max-width:none}
@@ -731,8 +753,7 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
     def add_modello(nums, fallback_html, titolo=None):
         pagine.append(("M", nums, fallback_html, titolo))
 
-    add(pg(f'''<div class="cover"><div class="kick">Monacelli Quality Salon, Progetto di Sviluppo su Misura</div>
-      <div class="big">{(cli['salone'] or codice)}</div><p class="sub">Magis Plus</p></div>''', "cover", "Copertina", nav=False, extra_cls="cover-bg"),
+    add(pg(f'''<div class="cover"><div class="big">{(cli['salone'] or codice)}</div></div>''', "cover", "Copertina", nav=False, extra_cls="cover-bg"),
         "Copertina")
     # pagine 2-7 del modello: citazione, introduzione, lettera del CEO, indice, cos'e' Magis Plus,
     # copertina "IL MIO SOGNO"
