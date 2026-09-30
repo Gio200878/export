@@ -26,6 +26,7 @@ import webbrowser
 
 import magis_plus_teoria as teoria
 import magis_plus_fonts as fonts
+import magis_plus_pagine as pagine_modello
 
 try:
     import openpyxl
@@ -353,116 +354,6 @@ def trova_json_modulo(codice, tipo):
     return validi[0][1]
 
 
-def pagina_sogno(dati_salone):
-    sogno = (dati_salone or {}).get("sogno", "").strip()
-    if not sogno:
-        return None
-    return f"""<h2>Il mio <b>sogno</b></h2>
-      <p class="lede">Raccontato dal salone.</p>
-      <blockquote style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:12px;
-      padding:6mm 7mm;margin:5mm 0;font-size:11pt;position:relative">{teoria.STAR_SVG}<p style="margin:0">{sogno}</p></blockquote>"""
-
-
-def pagina_immagine(dati_salone):
-    if not dati_salone:
-        return None
-    imm = dati_salone.get("immagine", {}) or {}
-    righe = "".join(f'<div style="display:flex;justify-content:space-between;padding:2mm 0;'
-                     f'border-bottom:1px solid rgba(255,255,255,.1)"><span>{k}</span><b>{v if v is not None else "—"}</b></div>'
-                     for k, v in imm.items())
-    pos = dati_salone.get("postazioni", {}) or {}
-    pos_html = " · ".join(f"{k.capitalize()}: {v}" for k, v in pos.items() if v)
-    extra = ""
-    for campo, etichetta in [("materiale_salone", "Materiale nel salone"), ("materiale_vetrine", "Materiale vetrine"),
-                             ("presenza_social", "Presenza social"), ("brand", "Brand"),
-                             ("proposte_sviluppo", "Proposta di sviluppo")]:
-        v = (dati_salone.get(campo) or "").strip()
-        if v:
-            extra += f'<p style="margin:3mm 0"><b>{etichetta}.</b> {v}</p>'
-    team = dati_salone.get("numero_team")
-    return f"""<h2>Immagine <b>interna ed esterna</b></h2>
-      <p class="lede">{f"Team di {team} persone. " if team else ""}{pos_html}</p>
-      <h3>Immagine del salone</h3>{righe}
-      {extra}"""
-
-
-SCORE_GROUPS = {
-    "acc": ["Saluto", "Controllo appuntamento in agenda", "Routine accoglienza", "Comunicazione iniziative e promozioni"],
-    "cons": ["Connessione", "Ascolto", "Capacità di capire i desideri", "Capacità di consigliare", "Condivisione"],
-    "cong": ["Verifica soddisfazione", "Propone/riconferma prodotti", "Quantifica ed elenca servizi",
-             "Fissa prossimo appuntamento", "Prende abbigliamento"],
-    "img": ["Look coerente", "Capelli", "Trucco/barba", "Divisa", "Eleganza e postura", "Cura e pulizia spazi"],
-}
-TEC_SERVIZI = ["Lavaggio", "Colore", "Taglio", "Piega"]
-
-
-def _media(vals):
-    v = [x for x in vals if x is not None]
-    return sum(v) / len(v) if v else None
-
-
-def _bars(punteggi, chiavi):
-    out = ""
-    for k in chiavi:
-        v = punteggi.get(k)
-        if v is None:
-            out += f'<div style="display:flex;justify-content:space-between;padding:.5mm 0;font-size:9pt"><span>{k}</span><span>—</span></div>'
-        else:
-            out += (f'<div style="display:flex;align-items:center;gap:3mm;padding:.5mm 0;font-size:9pt">'
-                     f'<span style="flex:1">{k}</span><span style="flex:0 0 40mm;height:2.2mm;background:rgba(255,255,255,.12);'
-                     f'border-radius:99px;overflow:hidden"><i style="display:block;height:100%;width:{v*10}%;'
-                     f'background:{"#FF7C99" if v==0 else "#A08BFF"};border-radius:99px"></i></span>'
-                     f'<b style="width:6mm;text-align:right">{v}</b></div>')
-    return out
-
-
-def pagina_team_mappa(collab):
-    righe = ""
-    for i, c in enumerate(collab):
-        p = c.get("punteggi", {})
-        tec = _media([p.get(f"{s}_{k}") for s in TEC_SERVIZI for k in ("Tempi", "Metodo", "Risultato")])
-        vals = [("Accoglienza", _media([p.get(k) for k in SCORE_GROUPS["acc"]])),
-                ("Consulenza", _media([p.get(k) for k in SCORE_GROUPS["cons"]])),
-                ("Congedo", _media([p.get(k) for k in SCORE_GROUPS["cong"]])),
-                ("Tecnica", tec),
-                ("Immagine", _media([p.get(k) for k in SCORE_GROUPS["img"]]))]
-        celle = "".join(f'<td style="text-align:center;padding:2mm">{v:.1f}' if v is not None else '<td style="text-align:center">—'
-                         for _, v in vals)
-        righe += (f'<tr style="border-bottom:1px solid rgba(255,255,255,.1)"><td style="padding:2mm"><b>{c.get("NOME_OPERATORE","")}</b>'
-                  f'<br><span style="font-size:8pt;color:#A9ADCF">{c.get("RUOLO","")}</span></td>{celle}</tr>')
-    head = "".join(f'<th style="font-size:8.5pt;color:#A9ADCF;text-align:center;padding:2mm">{h}</th>' for h in
-                    ["Accoglienza", "Consulenza", "Congedo", "Tecnica", "Immagine"])
-    return f"""<h2>Analisi <b>collaboratori</b></h2>
-      <p class="lede">Media per area, da 0 a 10.</p>
-      <table style="width:100%;border-collapse:collapse;font-size:9pt"><thead><tr><th></th>{head}</tr></thead>
-      <tbody>{righe}</tbody></table>"""
-
-
-def pagina_persona(c, idx, tot, ancora_prec, ancora_succ):
-    p = c.get("punteggi", {})
-    tec_rows = ""
-    for s in TEC_SERVIZI:
-        cells = "".join(f'<td style="text-align:center;padding:.8mm">{p.get(f"{s}_{k}", "—") if p.get(f"{s}_{k}") is not None else "—"}</td>'
-                         for k in ("Tempi", "Metodo", "Risultato"))
-        tec_rows += f'<tr><td style="padding:.8mm 1.5mm">{s}</td>{cells}</tr>'
-    nav = ""
-    if ancora_prec:
-        nav += f'<a href="#{ancora_prec}" style="margin-right:4mm">← precedente</a>'
-    if ancora_succ:
-        nav += f'<a href="#{ancora_succ}">successivo →</a>'
-    return f"""<div class="persona"><div style="position:absolute;top:18mm;right:15mm;font-size:8.5pt">{nav}</div>
-      <h2>{c.get("NOME_OPERATORE","")}</h2>
-      <p class="lede">{c.get("RUOLO","")} · {", ".join(c.get("CLIENTELA", []) or [])}</p>
-      <h3>Accoglienza</h3>{_bars(p, SCORE_GROUPS["acc"])}
-      <h3>Consulenza</h3>{_bars(p, SCORE_GROUPS["cons"])}
-      <h3>Professionalità tecnica</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:9pt"><thead><tr><th></th><th>Tempi</th><th>Metodo</th><th>Risultato</th></tr></thead>
-      <tbody>{tec_rows}</tbody></table>
-      <h3>Congedo</h3>{_bars(p, SCORE_GROUPS["cong"])}
-      <h3>Immagine personale</h3>{_bars(p, SCORE_GROUPS["img"])}
-      <div class="callout"><b>Proposta formativa.</b> {c.get("proposte_formative") or "da completare."}</div></div>"""
-
-
 FONTFACE_CSS = (
     '@font-face { font-family:"BSD"; src:url(data:font/ttf;base64,' + fonts.BSD_B64 + '); font-weight:100 900; }\n'
     '@font-face { font-family:"Fig"; src:url(data:font/ttf;base64,' + fonts.FIG_B64 + '); font-weight:300 900; }\n'
@@ -470,7 +361,7 @@ FONTFACE_CSS = (
     '.page.back-bg{background-image:url(data:image/jpeg;base64,' + fonts.BACK_B64 + ');background-size:cover;background-position:center}\n'
 )
 
-CSS = FONTFACE_CSS + """
+CSS = FONTFACE_CSS + pagine_modello.ABS_CSS + """
 @page { size: A4; margin: 0; }
 *{box-sizing:border-box}
 body{margin:0;background:#0F1330;color:#EEEDF8;font-family:"Fig",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -715,8 +606,9 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
     mod_collab = trova_json_modulo(codice, "Analisi Collaboratori")
     collab = (mod_collab or {}).get("collaboratori", [])
 
-    html_sogno = pagina_sogno(mod_salone)
-    html_immagine = pagina_immagine(mod_salone)
+    nome_salone = (cli["salone"] or "").strip() or str(codice)
+    html_sogno = pagine_modello.pagina_sogno(mod_salone, nome_salone)        # pagine identiche al modello (8, 12, 21)
+    html_immagine = pagine_modello.pagina_immagine(mod_salone, nome_salone)
 
     # indice dinamico: solo le voci realmente presenti in questo documento
     voci_indice = [("cosa", "Cos\'e\' Magis Plus")]
@@ -765,12 +657,12 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
     add_modello([7], pg(f'<h1>Il mio <b>sogno</b></h1>', "sogno-cover", "Il mio sogno", nav=False), "Il mio sogno")
 
     if html_sogno:
-        add(pg(html_sogno, "sogno", "Il mio sogno"), "Il mio sogno (salone)")
+        add(html_sogno, "Il mio sogno (salone)")
     if html_immagine:
         # copertina verde "IMMAGINE INTERNA ED ESTERNA" (pagina 11 del modello)
         add_modello([11], pg('<h1>Immagine <b>interna ed esterna</b></h1>', "immagine-cover", "Immagine", nav=False),
                     "Immagine interna ed esterna")
-        add(pg(html_immagine, "immagine", "Immagine"), "Immagine del salone")
+        add(html_immagine, "Immagine del salone")
 
     if dF or dM:
         # copertina "PROGETTO DI SVILUPPO" + pagina di testo (pagine 13 e 14 del modello)
@@ -813,12 +705,8 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
         add_modello([19], pg('<h1>Analisi <b>collaboratori</b></h1>', "team-cover", "Collaboratori", nav=False),
                     "Analisi collaboratori")
         add_modello([20], pg('<h2>Analisi <b>team</b></h2>', "team-intro", "Collaboratori"), "Analisi team")
-        add(pg(pagina_team_mappa(collab), "team", "Collaboratori"), "Mappa collaboratori")
         for i, c in enumerate(collab):
-            anc_prec = f"p{i-1}" if i > 0 else None
-            anc_succ = f"p{i+1}" if i < len(collab) - 1 else None
-            add(pg(pagina_persona(c, i, len(collab), anc_prec, anc_succ), f"p{i}", c.get("NOME_OPERATORE", f"Collaboratore {i+1}")),
-                c.get("NOME_OPERATORE", f"Collaboratore {i+1}"))
+            add(pagine_modello.pagina_collaboratore(c, nome_salone, i), c.get("NOME_OPERATORE") or f"Collaboratore {i+1}")
 
     add(pg(teoria.pagina_academy(), "academy", "Academy"), "Monacelli Happiness Academy")
     # ultima pagina identica al modello (pagina 36: contatti Monacelli Italy)
@@ -960,6 +848,12 @@ def aggiungi_segnalibri(pdf_path, elenco):
 
 
 # --------------------------------------------------------------------------- main
+def nome_per_file(codice, salone):
+    """'Magis_Plus_640_Casta_Diva': codice + nome del salone, senza caratteri non ammessi nei nomi file."""
+    nome = re.sub(r"[^0-9A-Za-zÀ-ÿ]+", "_", str(salone or "")).strip("_")
+    return f"Magis_Plus_{codice}" + (f"_{nome}" if nome else "")
+
+
 def main():
     print("=== Magis Plus — Progetto di Sviluppo ===")
     if not os.path.exists(XLSX_PATH):
@@ -1002,8 +896,9 @@ def main():
                      cli["att_m"], {}, par_m, {}, stelle_m)
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    html_path = os.path.join(OUT_DIR, f"Magis_Plus_{codice}.html")
-    pdf_path = os.path.join(OUT_DIR, f"Magis_Plus_{codice}.pdf")
+    nome_file = nome_per_file(codice, cli["salone"])
+    html_path = os.path.join(OUT_DIR, nome_file + ".html")
+    pdf_path = os.path.join(OUT_DIR, nome_file + ".pdf")
 
     items = costruisci_pagine(cli, codice, dF, dM, par_f, par_m, cli["tar_sal_f"], tar_giuste,
                                cli["op_f"], cli["pas_f"], cli["gg_lav"] or 165, cli["mesi"] or 8,
