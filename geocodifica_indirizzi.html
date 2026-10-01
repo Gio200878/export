@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geocodifica clienti</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --paper: #f6f5f1;
+    --line: #d9d6cc;
+    --accent: #2f5d50;
+    --accent-soft: #e7efec;
+    --err: #a33a2c;
+    --err-soft: #f6e6e2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 24px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { color: #5b6470; margin: 0 0 24px; font-size: 14px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+  input[type=text] {
+    width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px;
+    font-size: 14px; margin-bottom: 14px;
+  }
+  input[type=file] { margin-bottom: 4px; }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button:disabled { background: #a9b2ac; cursor: not-allowed; }
+  button.secondary { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+  .progress-bar {
+    height: 10px; background: var(--accent-soft); border-radius: 999px; overflow: hidden; margin: 14px 0 6px;
+  }
+  .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width .15s; }
+  .stats { display: flex; gap: 18px; font-size: 13px; color: #5b6470; flex-wrap: wrap; }
+  .stats b { color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { color: #5b6470; font-weight: 600; }
+  tr.err td { background: var(--err-soft); }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .tag.ok { background: var(--accent-soft); color: var(--accent); }
+  .tag.bad { background: var(--err-soft); color: var(--err); }
+  .table-wrap { max-height: 360px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
+  #log { font-size: 12px; color: #5b6470; margin-top: 10px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Geocodifica indirizzi clienti</h1>
+  <p class="sub">Carica il CSV clienti (con colonne Indirizzo, CAP, Citta, Provincia) e converte ogni indirizzo in coordinate precise usando la Geocoding API di Google.</p>
+
+  <div class="card">
+    <label for="csvfile">1. File CSV clienti (separatore ;)</label>
+    <input type="file" id="csvfile" accept=".csv">
+    <div id="filesummary" class="sub" style="margin-top:8px;"></div>
+  </div>
+
+  <div class="card">
+    <label for="apikey">2. Chiave Google Maps (con Geocoding API abilitata)</label>
+    <input type="text" id="apikey" placeholder="AIza...">
+    <button id="startBtn" disabled>Avvia geocodifica</button>
+    <button id="downloadBtn" class="secondary hidden">Scarica CSV con coordinate</button>
+  </div>
+
+  <div class="card hidden" id="progressCard">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="stats">
+      <span>Processati: <b id="statDone">0</b>/<b id="statTotal">0</b></span>
+      <span>OK: <b id="statOk">0</b></span>
+      <span>Falliti: <b id="statErr">0</b></span>
+    </div>
+    <div id="log"></div>
+  </div>
+
+  <div class="card hidden" id="resultCard">
+    <label>Risultati</label>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Cliente</th><th>Indirizzo cercato</th><th>Esito</th><th>Lat</th><th>Lng</th></tr></thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let rows = [];
+let headerLine = '';
+let delimiter = ';';
+let geocoded = [];
+
+function parseCSV(text) {
+  delimiter = text.split('\n')[0].includes(';') ? ';' : ',';
+  const lines = text.replace(/\r\n/g, '\n').split('\n').filter(l => l.trim() !== '');
+  const parseLine = (line) => {
+    const out = [];
+    let cur = '', inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQuotes = !inQuotes; continue; }
+      if (c === delimiter && !inQuotes) { out.push(cur); cur = ''; continue; }
+      cur += c;
+    }
+    out.push(cur);
+    return out;
+  };
+  const header = parseLine(lines[0]).map(h => h.replace(/^﻿/, '').trim());
+  const data = lines.slice(1).map(parseLine);
+  return { header, data };
+}
+
+document.getElementById('csvfile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const { header, data } = parseCSV(ev.target.result);
+    headerLine = header;
+    rows = data.map(cols => {
+      const obj = {};
+      header.forEach((h, i) => obj[h] = (cols[i] || '').trim());
+      return obj;
+    });
+    document.getElementById('filesummary').textContent =
+      `${rows.length} righe caricate. Colonne: ${header.join(', ')}`;
+    document.getElementById('startBtn').disabled = false;
+  };
+  reader.readAsText(file, 'UTF-8');
+});
+
+function buildAddress(row) {
+  const via = row['Indirizzo'] || '';
+  const cap = (row['CAP'] || '').trim();
+  let citta = row['Citta'] || row['Città'] || '';
+  let prov = row['Provincia'] || '';
+  let paese = 'Italia';
+
+  // clienti esteri: "CITTA - PAESE" nel campo Citta, es. "LUGANO - SVIZZERA"
+  const m = citta.match(/^(.*?)\s*-\s*(SVIZZERA|FRANCIA|SAN MARINO|AUSTRIA|SLOVENIA|GERMANIA|SPAGNA)\s*$/i);
+  if (m) {
+    citta = m[1].trim();
+    paese = m[2].trim();
+    prov = ''; // il codice provincia italiano (es. "EE") non ha senso all'estero
+  }
+
+  return { indirizzo: [via, cap, citta, prov, paese].filter(Boolean).join(', '), paese };
+}
+
+function geocodeOne(addressObj, apiKey) {
+  const address = addressObj.indirizzo;
+  const regionParam = addressObj.paese === 'Italia' ? '&region=it' : '';
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}${regionParam}&key=${apiKey}`;
+  return fetch(url).then(r => r.json()).then(data => {
+    if (data.status === 'OK' && data.results.length > 0) {
+      const loc = data.results[0].geometry.location;
+      return { ok: true, lat: loc.lat, lng: loc.lng, formatted: data.results[0].formatted_address, precision: data.results[0].geometry.location_type };
+    }
+    return { ok: false, error: data.status };
+  }).catch(err => ({ ok: false, error: String(err) }));
+}
+
+function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+document.getElementById('startBtn').addEventListener('click', async () => {
+  const apiKey = document.getElementById('apikey').value.trim();
+  if (!apiKey) { alert('Inserisci la chiave API'); return; }
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('progressCard').classList.remove('hidden');
+  document.getElementById('resultCard').classList.remove('hidden');
+
+  const total = rows.length;
+  document.getElementById('statTotal').textContent = total;
+  let done = 0, ok = 0, err = 0;
+  geocoded = [];
+  const tbody = document.getElementById('resultsBody');
+  tbody.innerHTML = '';
+
+  for (const row of rows) {
+    const addressObj = buildAddress(row);
+    const address = addressObj.indirizzo;
+    const result = await geocodeOne(addressObj, apiKey);
+    done++;
+    if (result.ok) { ok++; } else { err++; }
+    geocoded.push({ row, address, result });
+
+    document.getElementById('statDone').textContent = done;
+    document.getElementById('statOk').textContent = ok;
+    document.getElementById('statErr').textContent = err;
+    document.getElementById('progressFill').style.width = (done / total * 100) + '%';
+
+    const tr = document.createElement('tr');
+    if (!result.ok) tr.className = 'err';
+    tr.innerHTML = `
+      <td>${(row['Ragione_Sociale'] || '').slice(0, 30)}</td>
+      <td>${address}</td>
+      <td>${result.ok ? '<span class="tag ok">OK</span>' : `<span class="tag bad">${result.error}</span>`}</td>
+      <td>${result.ok ? result.lat.toFixed(5) : ''}</td>
+      <td>${result.ok ? result.lng.toFixed(5) : ''}</td>
+    `;
+    tbody.appendChild(tr);
+    tbody.parentElement.parentElement.scrollTop = tbody.parentElement.scrollHeight;
+
+    // throttle leggero per non superare i rate limit della API
+    await sleep(60);
+  }
+
+  document.getElementById('log').textContent =
+    err > 0 ? `${err} indirizzi non geocodificati: verifica manualmente o correggi il CSV e ricarica solo quelle righe.` : 'Tutti gli indirizzi geocodificati con successo.';
+  document.getElementById('downloadBtn').classList.remove('hidden');
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const cols = [...headerLine, 'Lat', 'Lng', 'Precisione_geocoding', 'Indirizzo_normalizzato_google'];
+  const escape = (v) => {
+    v = String(v ?? '');
+    if (v.includes(';') || v.includes('"') || v.includes('\n')) {
+      return '"' + v.replace(/"/g, '""') + '"';
+    }
+    return v;
+  };
+  const lines = [cols.map(escape).join(';')];
+  geocoded.forEach(({ row, result }) => {
+    const vals = headerLine.map(h => row[h] || '');
+    vals.push(result.ok ? result.lat : '');
+    vals.push(result.ok ? result.lng : '');
+    vals.push(result.ok ? result.precision : '');
+    vals.push(result.ok ? result.formatted : '');
+    lines.push(vals.map(escape).join(';'));
+  });
+  const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'clienti_geocodificati.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>

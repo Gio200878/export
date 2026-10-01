@@ -1,0 +1,22 @@
+[
+  {
+    "id": "firenze",
+    "nome": "Firenze",
+    "citta": "Firenze",
+    "lat": 43.7696,
+    "lng": 11.2558,
+    "raggio_km": 100,
+    "colore": "#c0392b",
+    "opacita": 0.15
+  },
+  {
+    "id": "milano",
+    "nome": "Milano",
+    "citta": "Milano",
+    "lat": 45.4642,
+    "lng": 9.19,
+    "raggio_km": 100,
+    "colore": "#2980b9",
+    "opacita": 0.15
+  }
+]

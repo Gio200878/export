@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configurazione cerchi HEMI</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --paper: #f6f5f1;
+    --line: #d9d6cc;
+    --accent: #2f5d50;
+    --accent-soft: #e7efec;
+    --err: #a33a2c;
+    --err-soft: #f6e6e2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 24px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { color: #5b6470; margin: 0 0 24px; font-size: 14px; }
+  .card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 14px;
+    margin: 0 0 14px;
+    font-weight: 650;
+  }
+  label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #444;
+  }
+  label .req { color: var(--err); }
+  input[type=text], input[type=number] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  input[type=color] {
+    width: 52px;
+    height: 36px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 2px;
+    cursor: pointer;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .grid .full { grid-column: 1 / -1; }
+  .field-hint {
+    font-size: 11.5px;
+    color: #8a8f98;
+    margin-top: 3px;
+  }
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.secondary {
+    background: #fff;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  button.danger {
+    background: #fff;
+    color: var(--err);
+    border: 1px solid var(--err);
+    padding: 5px 10px;
+    font-size: 12.5px;
+  }
+  button:disabled { background: #a9b2ac; cursor: not-allowed; border-color: #a9b2ac; }
+  .row-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { color: #5b6470; font-weight: 600; font-size: 12.5px; }
+  .swatch {
+    width: 16px; height: 16px; border-radius: 50%;
+    display: inline-block; border: 1px solid rgba(0,0,0,0.15);
+    vertical-align: middle;
+  }
+  .empty { color: #8a8f98; font-size: 13.5px; padding: 10px 0; }
+  #status {
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 12px;
+  }
+  #status.ok { background: var(--accent-soft); color: var(--accent); }
+  #status.err { background: var(--err-soft); color: var(--err); }
+  .hidden { display: none; }
+  .note {
+    font-size: 12.5px;
+    color: #5b6470;
+    background: #f0eee7;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Configurazione cerchi HEMI</h1>
+  <p class="sub">Aggiungi, modifica o rimuovi i cerchi mostrati sulla mappa clienti. Al termine scarica <code>cerchi.json</code> e caricalo via FTP nella stessa cartella di <code>mappa_clienti_italia.html</code>.</p>
+
+  <div class="note" id="loadNote">Carico eventuale cerchi.json già presente in questa cartella&hellip;</div>
+
+  <div class="card">
+    <h2 id="formTitle">Nuovo cerchio</h2>
+    <div class="grid">
+      <div>
+        <label>Nome <span class="req">*</span></label>
+        <input type="text" id="fNome" placeholder="es. Zona Nord">
+      </div>
+      <div>
+        <label>Città <span class="req">*</span></label>
+        <input type="text" id="fCitta" placeholder="es. Milano">
+      </div>
+      <div>
+        <label>Lat</label>
+        <input type="number" id="fLat" step="0.000001" placeholder="opzionale">
+        <div class="field-hint">Vuota = geocodifica dalla città al salvataggio</div>
+      </div>
+      <div>
+        <label>Lng</label>
+        <input type="number" id="fLng" step="0.000001" placeholder="opzionale">
+      </div>
+      <div>
+        <label>Raggio (km)</label>
+        <input type="number" id="fRaggio" step="1" min="1" value="100">
+      </div>
+      <div>
+        <label>Colore</label>
+        <input type="color" id="fColore" value="#c0392b">
+      </div>
+      <div>
+        <label>Opacità riempimento</label>
+        <input type="number" id="fOpacita" step="0.05" min="0" max="1" value="0.15">
+      </div>
+    </div>
+    <div class="grid" id="geoKeyRow">
+      <div class="full">
+        <label>Chiave Google Geocoding API <span class="field-hint" style="font-weight:400;">(serve solo se lasci Lat/Lng vuoti, per convertire la città in coordinate)</span></label>
+        <input type="text" id="fApiKey" placeholder="AIza...">
+      </div>
+    </div>
+    <div class="row-actions">
+      <button id="addBtn">Aggiungi cerchio</button>
+      <button id="cancelEditBtn" class="secondary hidden">Annulla modifica</button>
+    </div>
+    <div id="status" class="hidden"></div>
+  </div>
+
+  <div class="card">
+    <h2>Cerchi configurati</h2>
+    <table id="tbl">
+      <thead>
+        <tr><th>Nome</th><th>Città</th><th>Lat</th><th>Lng</th><th>Raggio</th><th>Colore</th><th></th></tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty hidden" id="emptyMsg">Nessun cerchio configurato.</div>
+  </div>
+
+  <div class="card">
+    <h2>Salvataggio</h2>
+    <p class="sub" style="margin-bottom:12px;">Con <code>salva_cerchi.php</code> caricato sul sito (stessa cartella), salva direttamente sul server: niente download, niente FTP.</p>
+    <div class="grid" style="margin-bottom:10px;">
+      <div class="full">
+        <label>Password di salvataggio</label>
+        <input type="text" id="fPassword" placeholder="quella impostata in salva_cerchi.php">
+      </div>
+    </div>
+    <div class="row-actions">
+      <button id="saveServerBtn">Salva sul server</button>
+      <button id="downloadBtn" class="secondary">Scarica cerchi.json (backup / senza PHP)</button>
+    </div>
+    <div id="saveStatus" class="hidden" style="margin-top:12px;"></div>
+  </div>
+</div>
+
+<script>
+let cerchi = [];
+let editingId = null;
+
+function slug(nome) {
+  return nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || ('cerchio-' + Date.now());
+}
+
+function uniqueId(base) {
+  let id = base, n = 2;
+  while (cerchi.some(c => c.id === id && c.id !== editingId)) {
+    id = base + '-' + n;
+    n++;
+  }
+  return id;
+}
+
+function setStatus(msg, ok) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = ok ? 'ok' : 'err';
+}
+
+function clearStatus() {
+  const el = document.getElementById('status');
+  el.className = 'hidden';
+}
+
+async function caricaEsistente() {
+  const note = document.getElementById('loadNote');
+  try {
+    const res = await fetch('cerchi.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('non trovato');
+    const data = await res.json();
+    cerchi = Array.isArray(data) ? data : [];
+    note.textContent = `Caricati ${cerchi.length} cerchi già presenti in cerchi.json.`;
+  } catch (e) {
+    cerchi = [];
+    note.textContent = 'Nessun cerchio.json trovato in questa cartella: si parte da una lista vuota.';
+  }
+  render();
+}
+
+function render() {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  document.getElementById('emptyMsg').classList.toggle('hidden', cerchi.length > 0);
+  cerchi.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${c.nome}</td>
+      <td>${c.citta}</td>
+      <td>${c.lat.toFixed(4)}</td>
+      <td>${c.lng.toFixed(4)}</td>
+      <td>${c.raggio_km} km</td>
+      <td><span class="swatch" style="background:${c.colore}"></span></td>
+      <td>
+        <button class="secondary" data-act="edit" data-id="${c.id}" style="padding:5px 10px; font-size:12.5px;">Modifica</button>
+        <button class="danger" data-act="del" data-id="${c.id}">Elimina</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById('tbody').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const c = cerchi.find(x => x.id === id);
+  if (!c) return;
+  if (btn.dataset.act === 'del') {
+    if (!confirm(`Eliminare il cerchio "${c.nome}"?`)) return;
+    cerchi = cerchi.filter(x => x.id !== id);
+    render();
+    return;
+  }
+  if (btn.dataset.act === 'edit') {
+    editingId = c.id;
+    document.getElementById('fNome').value = c.nome;
+    document.getElementById('fCitta').value = c.citta;
+    document.getElementById('fLat').value = c.lat;
+    document.getElementById('fLng').value = c.lng;
+    document.getElementById('fRaggio').value = c.raggio_km;
+    document.getElementById('fColore').value = c.colore;
+    document.getElementById('fOpacita').value = c.opacita;
+    document.getElementById('formTitle').textContent = `Modifica: ${c.nome}`;
+    document.getElementById('addBtn').textContent = 'Salva modifiche';
+    document.getElementById('cancelEditBtn').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
+
+document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+
+function resetForm() {
+  editingId = null;
+  document.getElementById('fNome').value = '';
+  document.getElementById('fCitta').value = '';
+  document.getElementById('fLat').value = '';
+  document.getElementById('fLng').value = '';
+  document.getElementById('fRaggio').value = 100;
+  document.getElementById('fColore').value = '#c0392b';
+  document.getElementById('fOpacita').value = 0.15;
+  document.getElementById('formTitle').textContent = 'Nuovo cerchio';
+  document.getElementById('addBtn').textContent = 'Aggiungi cerchio';
+  document.getElementById('cancelEditBtn').classList.add('hidden');
+  clearStatus();
+}
+
+async function geocodifica(citta, apiKey) {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(citta + ', Italia')}&region=it&key=${apiKey}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.status === 'OK' && data.results.length > 0) {
+    const loc = data.results[0].geometry.location;
+    return { lat: loc.lat, lng: loc.lng };
+  }
+  throw new Error(data.status || 'geocodifica fallita');
+}
+
+document.getElementById('addBtn').addEventListener('click', async () => {
+  const nome = document.getElementById('fNome').value.trim();
+  const citta = document.getElementById('fCitta').value.trim();
+  let lat = document.getElementById('fLat').value.trim();
+  let lng = document.getElementById('fLng').value.trim();
+  const raggio = parseFloat(document.getElementById('fRaggio').value) || 100;
+  const colore = document.getElementById('fColore').value;
+  const opacita = parseFloat(document.getElementById('fOpacita').value);
+  const apiKey = document.getElementById('fApiKey').value.trim();
+
+  clearStatus();
+  if (!nome || !citta) {
+    setStatus('Nome e Città sono obbligatori.', false);
+    return;
+  }
+
+  if (!lat || !lng) {
+    if (!apiKey) {
+      setStatus('Lat/Lng vuoti: inserisci una chiave Google Geocoding API per ricavarli dalla città, oppure inseriscili a mano.', false);
+      return;
+    }
+    document.getElementById('addBtn').disabled = true;
+    try {
+      const coords = await geocodifica(citta, apiKey);
+      lat = coords.lat;
+      lng = coords.lng;
+      setStatus(`Geocodificato: ${citta} -> ${lat.toFixed(5)}, ${lng.toFixed(5)}`, true);
+    } catch (e) {
+      setStatus('Geocodifica non riuscita: ' + e.message, false);
+      document.getElementById('addBtn').disabled = false;
+      return;
+    }
+    document.getElementById('addBtn').disabled = false;
+  }
+
+  const id = editingId || uniqueId(slug(nome));
+  const nuovoCerchio = {
+    id,
+    nome,
+    citta,
+    lat: parseFloat(lat),
+    lng: parseFloat(lng),
+    raggio_km: raggio,
+    colore,
+    opacita: isNaN(opacita) ? 0.15 : opacita,
+  };
+
+  if (editingId) {
+    cerchi = cerchi.map(c => c.id === editingId ? nuovoCerchio : c);
+  } else {
+    cerchi.push(nuovoCerchio);
+  }
+  render();
+  resetForm();
+  setStatus(`Cerchio "${nome}" salvato in elenco. Usa "Salva sul server" (o scarica cerchi.json) per pubblicarlo.`, true);
+});
+
+function setSaveStatus(msg, ok) {
+  const el = document.getElementById('saveStatus');
+  el.textContent = msg;
+  el.className = ok ? 'ok' : 'err';
+}
+
+document.getElementById('saveServerBtn').addEventListener('click', async () => {
+  const token = document.getElementById('fPassword').value;
+  if (!token) {
+    setSaveStatus('Inserisci la password di salvataggio (quella impostata in salva_cerchi.php).', false);
+    return;
+  }
+  const btn = document.getElementById('saveServerBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('salva_cerchi.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, cerchi })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setSaveStatus(`Salvato sul server: ${data.scritti} cerchi pubblicati su cerchi.json.`, true);
+    } else {
+      setSaveStatus('Errore: ' + (data.error || 'salvataggio non riuscito'), false);
+    }
+  } catch (e) {
+    setSaveStatus('Errore di rete o salva_cerchi.php non trovato sul server: ' + e.message, false);
+  }
+  btn.disabled = false;
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(cerchi, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cerchi.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+caricaEsistente();
+</script>
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mappa clienti — Galli (143)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDIH-vbefLQRVUqjdyqq8jflYTGX47ikZA"></script>
+<script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.14.1/dist/Leaflet.GoogleMutant.js"></script>
+<style>
+  :root {
+    --ink: #1c2430;
+    --paper: #f6f5f1;
+    --line: #d9d6cc;
+    --accent: #2f5d50;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    flex: 0 0 auto;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 {
+    font-size: 19px;
+    margin: 0;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  header .meta {
+    font-size: 13px;
+    color: #6b7280;
+  }
+  .layout {
+    display: flex;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #map {
+    flex: 1 1 auto;
+    height: 100%;
+    min-width: 0;
+  }
+  #listaClienti, #note {
+    flex: 0 0 280px;
+    width: 280px;
+    padding: 16px 18px 16px;
+    overflow-y: auto;
+    background: #fff;
+  }
+  #listaClienti { border-right: 1px solid var(--line); }
+  #note { border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+  #listaClienti h2, #note h2 {
+    font-size: 13px;
+    text-transform: none;
+    font-weight: 650;
+    margin: 0 0 10px;
+    color: var(--ink);
+  }
+  .cliente-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .cliente-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .cliente-item:hover { background: rgba(0,0,0,0.04); border-color: var(--accent); }
+  .cliente-item .nome {
+    flex: 1 1 auto;
+    min-width: 0;
+    line-height: 1.25;
+  }
+  .cliente-item .nome .citta {
+    display: block;
+    color: #6b7280;
+    font-size: 11.5px;
+  }
+  .cliente-item .val {
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .list-hint {
+    font-size: 12px;
+    color: #8a8f98;
+    margin-top: 12px;
+  }
+  #noteText {
+    flex: 1 1 auto;
+    width: 100%;
+    resize: none;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 13.5px;
+    color: var(--ink);
+    background: var(--paper);
+  }
+  #noteText:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .note-hint {
+    font-size: 11.5px;
+    color: #8a8f98;
+    margin-top: 8px;
+  }
+  .leaflet-popup-content-wrapper {
+    border-radius: 10px;
+  }
+  .popup-title {
+    font-weight: 650;
+    font-size: 13.5px;
+    margin: 0 0 2px;
+  }
+  .popup-sub {
+    font-size: 12px;
+    color: #6b7280;
+    margin: 0 0 8px;
+  }
+  .popup-total {
+    font-size: 13px;
+    font-weight: 650;
+    margin: 6px 0 8px;
+    padding-top: 6px;
+    border-top: 1px solid #e5e5e5;
+  }
+  table.popup-lines {
+    border-collapse: collapse;
+    font-size: 12.5px;
+    width: 100%;
+  }
+  table.popup-lines td {
+    padding: 2px 0;
+  }
+  table.popup-lines td.val {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: #374151;
+  }
+  table.popup-lines tr td.name {
+    color: #1c2430;
+  }
+  .bar-bg {
+    background: #eee;
+    border-radius: 3px;
+    height: 5px;
+    margin-top: 3px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Clienti Galli (143) — da inizio anno</h1>
+  <div class="meta">30 clienti &middot; dati aggiornati al 18/09/2026 &middot; clicca un cliente in elenco o un punto sulla mappa per il dettaglio fatturato</div>
+</header>
+
+<div class="layout">
+  <aside id="listaClienti">
+    <h2>Clienti &mdash; per fatturato</h2>
+    <div class="cliente-grid" id="clientiGrid"></div>
+    <div class="list-hint">Clicca un cliente per centrare la mappa e aprirne il dettaglio.</div>
+  </aside>
+  <div id="map"></div>
+  <aside id="note">
+    <h2>NOTE</h2>
+    <textarea id="noteText" placeholder="Scrivi qui le tue note su questo agente..."></textarea>
+    <div class="note-hint">Le note si salvano solo in questo browser (non condivise, non pubblicate).</div>
+  </aside>
+</div>
+
+<script>
+const CLIENTS = [{"id": 3284, "nome": "FINAZZI FABIO", "citta": "Chiuduno", "prov": "BG", "hm2i": "143", "lat": 45.650915, "lon": 9.8502, "totale": 68834.65, "linee": {"COL": 19921.62, "GOLD": 23876.4, "INP": 16204.15, "KIT": 3950.88, "STY": 4455.0, "SOL": 136.8, "TRI": 289.8, "BRO": 0.0}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-16"}, {"id": 3382, "nome": "MARINA.BEAUTY STUDIO SRL", "citta": "Cassano Magnago", "prov": "VA", "hm2i": "143", "lat": 45.670204, "lon": 8.818945, "totale": 62967.67, "linee": {"1.K": 5000.0, "COL": 15574.76, "GOLD": 15367.8, "INP": 11707.65, "KIT": 5569.26, "STY": 4433.4, "TRI": 3649.8, "SOL": 1665.0}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-11"}, {"id": 692, "nome": "KARMA SRL", "citta": "Morbegno", "prov": "SO", "hm2i": "143", "lat": 46.134776, "lon": 9.574863, "totale": 54597.67, "linee": {"COL": 16512.31, "GOLD": 14872.8, "INP": 7811.56, "STY": 698.4, "TRI": 7581.0, "1.K": 4550.0, "KIT": 2298.0, "SOL": 273.6}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-09"}, {"id": 298, "nome": "JESSICA BY LEONI SRL", "citta": "Morbegno", "prov": "SO", "hm2i": "143", "lat": 46.132101, "lon": 9.572613, "totale": 41297.58, "linee": {"1.K": 4550.0, "COL": 10538.58, "GOLD": 11280.6, "INP": 7582.0, "KIT": 3090.0, "STY": 1353.6, "TRI": 1747.2, "SOL": 1155.6}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-16"}, {"id": 924, "nome": "FABRIZIO I PARRUCCHIERI SAS di Frigerio Fabrizio & C.", "citta": "Inverigo", "prov": "CO", "hm2i": "143", "lat": 45.740773, "lon": 9.223614, "totale": 33801.74, "linee": {"COL": 14779.55, "GOLD": 8208.02, "INP": 8296.14, "STY": 1930.23, "SOL": 587.8}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-17"}, {"id": 3643, "nome": "I PECCHIA SNC di Pecchia Mauro e Paolo", "citta": "Milano", "prov": "MI", "hm2i": "143", "lat": 45.452089, "lon": 9.150247, "totale": 32369.82, "linee": {"COL": 9603.62, "GOLD": 8017.1, "INP": 7715.15, "STY": 1433.25, "1.K": 5600.7}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-08-31"}, {"id": 181, "nome": "DE MARCO CAROLINA", "citta": "Cermenate", "prov": "CO", "hm2i": "143", "lat": 45.700482, "lon": 9.084901, "totale": 28870.21, "linee": {"1.K": 5000.0, "COL": 7278.52, "GOLD": 7498.45, "INP": 3996.15, "KIT": 3188.64, "TRI": 865.2, "SOL": 713.7, "STY": 329.55}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-07"}, {"id": 468, "nome": "RONCHETTA ALESSANDRO", "citta": "Borgosesia", "prov": "VC", "hm2i": "143", "lat": 45.720387, "lon": 8.271514, "totale": 21700.05, "linee": {"COL": 4383.49, "GOLD": 4991.38, "INP": 7089.87, "STY": 2424.19, "TRI": 1810.31, "KIT": 345.6, "SOL": 655.21}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-08-31"}, {"id": 3622, "nome": "BOSISIO ALESSIA", "citta": "Cantu'", "prov": "CO", "hm2i": "143", "lat": 45.738311, "lon": 9.134496, "totale": 18922.83, "linee": {"COL": 3749.17, "GOLD": 7585.22, "INP": 5718.59, "STY": 652.39, "FOR": 0.0, "SOL": 399.6, "KIT": 817.86}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-17"}, {"id": 145, "nome": "E' MODA SNC di Cinzia e Nunzio Pardo", "citta": "Milano", "prov": "MI", "hm2i": "143", "lat": 45.470564, "lon": 9.164996, "totale": 16119.47, "linee": {"COL": 4605.52, "GOLD": 5224.7, "INP": 5229.95, "TRI": 852.6, "STY": 132.6, "SOL": 74.1}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-08-31"}, {"id": 13, "nome": "ACCONCIATURE ROSARIO SAS di Scalzo Fabiana & C.", "citta": "Appiano Gentile", "prov": "CO", "hm2i": "143", "lat": 45.73416, "lon": 8.979663, "totale": 13751.43, "linee": {"1.K": 3100.0, "COL": 2276.62, "GOLD": 3252.56, "INP": 2092.68, "STY": 1803.05, "KIT": 839.52, "BRO": 0.0, "SOL": 387.0}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-17"}, {"id": 3627, "nome": "MORETTINI JESSICA", "citta": "Nembro", "prov": "BG", "hm2i": "143", "lat": 45.744847, "lon": 9.759706, "totale": 11931.61, "linee": {"COL": 3643.45, "GOLD": 992.99, "INP": 1133.51, "STY": 561.62, "1.K": 5600.04}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-03"}, {"id": 3657, "nome": "ARIA SALON SNC di Lombardo Vincenzo & C.", "citta": "Rho", "prov": "MI", "hm2i": "143", "lat": 45.527074, "lon": 9.042605, "totale": 10356.41, "linee": {"COL": 524.55, "FOR": 0.0, "GES": 0.0, "GOLD": 3819.4, "INP": 4309.3, "STY": 885.3, "KIT": 817.86}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-15"}, {"id": 3703, "nome": "PRODUCA SRL", "citta": "Milano", "prov": "MI", "hm2i": "143", "lat": 45.46484, "lon": 9.173565, "totale": 8522.1, "linee": {"GOLD": 1122.3, "INP": 7399.8}, "geo_precisione": "GEOMETRIC_CENTER", "ultima_data": "2026-09-10"}, {"id": 3649, "nome": "A & A SNC di Dalmasso Adele & C.", "citta": "Borgosesia", "prov": "VC", "hm2i": "143", "lat": 45.720387, "lon": 8.271514, "totale": 7431.62, "linee": {"COL": 1913.51, "GOLD": 1963.72, "INP": 2464.88, "STY": 518.54, "SOL": 570.97}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-17"}, {"id": 3675, "nome": "BATTIPAGLIA ORSOLA - G.ELLE.G.", "citta": "Bovisio-Masciago", "prov": "MB", "hm2i": "143", "lat": 45.612697, "lon": 9.147647, "totale": 6486.18, "linee": {"GOLD": 1654.1, "INP": 2332.08, "GES": 2500.0}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-08-31"}, {"id": 248, "nome": "GAMMINO GIUSEPPINA", "citta": "Rescaldina", "prov": "MI", "hm2i": "143", "lat": 45.600783, "lon": 8.927027, "totale": 4750.8, "linee": {"COL": 92.74, "GOLD": 728.78, "INP": 1609.62, "KIT": 1660.26, "STY": 176.4, "TRI": 483.0}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-07"}, {"id": 512, "nome": "SOLO PER TRE SAS di Nardin Elisabetta & C.", "citta": "Cantu", "prov": "CO", "hm2i": "143", "lat": 45.730853, "lon": 9.156154, "totale": 4647.93, "linee": {"COL": 1161.24, "GOLD": 1184.06, "INP": 1504.3, "STY": 798.33}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-07-27"}, {"id": 3680, "nome": "AMETISTA SNC di Colombo M., Fortunato T. & Rota A.", "citta": "Stezzano", "prov": "BG", "hm2i": "143", "lat": 45.652785, "lon": 9.646888, "totale": 4311.3, "linee": {"GOLD": 3051.3, "INP": 1260.0}, "geo_precisione": "GEOMETRIC_CENTER", "ultima_data": "2026-08-31"}, {"id": 3367, "nome": "EMANUELA RONCI HAIR STUDIO SAS", "citta": "Induno Olona", "prov": "VA", "hm2i": "143", "lat": 45.843062, "lon": 8.83107, "totale": 4171.4, "linee": {"COL": 64.52, "GOLD": 2356.69, "INP": 1601.01, "STY": 149.18}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-08-04"}, {"id": 150, "nome": "INPHINITY CONSULENTI DI BELLEZZA SNC di Danesi L.& Arcuri G.", "citta": "Saronno", "prov": "VA", "hm2i": "143", "lat": 45.624013, "lon": 9.041049, "totale": 4066.86, "linee": {"COL": 2764.86, "GOLD": 651.0, "INP": 581.7, "STY": 69.3}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-08-07"}, {"id": 3706, "nome": "FRATTINI CATERINA", "citta": "Gallarate", "prov": "VA", "hm2i": "143", "lat": 45.673286, "lon": 8.781021, "totale": 4048.11, "linee": {"BEN": 0.0, "FOR": 0.0, "GES": 0.0, "GOLD": 2103.21, "INP": 1751.7, "COL": 193.2}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-10"}, {"id": 309, "nome": "L'EQUIPE SNC di Arnaboldi N., Marelli P. e V.", "citta": "Como", "prov": "CO", "hm2i": "143", "lat": 45.778699, "lon": 9.100822, "totale": 3146.7, "linee": {"GOLD": 277.2, "INP": 2121.9, "STY": 747.6}, "geo_precisione": "RANGE_INTERPOLATED", "ultima_data": "2026-09-10"}, {"id": 393, "nome": "OREZZI EMANUELE", "citta": "Cantu'", "prov": "CO", "hm2i": "143", "lat": 45.732817, "lon": 9.135552, "totale": 2623.7, "linee": {"INP": 1717.87, "STY": 135.83, "GOLD": 770.0}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-07-08"}, {"id": 3709, "nome": "SCULTURE SRL di Cerra Giovanna e Laura", "citta": "Buccinasco", "prov": "MI", "hm2i": "143", "lat": 45.432475, "lon": 9.120354, "totale": 2578.14, "linee": {"BEN": 0.0, "FOR": 0.0, "GES": 0.0, "GOLD": 961.29, "INP": 1616.85}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-08"}, {"id": 3546, "nome": "IL BORGO D'ORO SAGL", "citta": "CORTEGLIA - SVIZZERA", "prov": "EE", "hm2i": "143", "lat": 45.860265, "lon": 8.993155, "totale": 1904.55, "linee": {"GOLD": 1532.16, "INP": 372.39}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-07-14"}, {"id": 3671, "nome": "GRIMAUDO SALVATORE", "citta": "Como", "prov": "CO", "hm2i": "143", "lat": 45.777356, "lon": 9.101777, "totale": 1645.82, "linee": {"GOLD": 1279.48, "INP": 366.34}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-08-31"}, {"id": 3427, "nome": "SCAMARCIA ALESSANDRO", "citta": "LUGANO - SVIZZERA", "prov": "EE", "hm2i": "143", "lat": 46.018911, "lon": 8.956953, "totale": 1404.3, "linee": {"GOLD": 1197.0, "INP": 207.3}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-09-11"}, {"id": 467, "nome": "ROMEO MARIA", "citta": "Imperia", "prov": "IM", "hm2i": "143", "lat": 43.889143, "lon": 8.043009, "totale": 1245.19, "linee": {"GOLD": 177.4, "INP": 873.41, "SOL": 119.79, "STY": 74.59}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-07-24"}, {"id": 3194, "nome": "CERESOLI BRUNA", "citta": "Dalmine", "prov": "BG", "hm2i": "143", "lat": 45.652875, "lon": 9.593285, "totale": 1076.6, "linee": {"GOLD": 1076.6}, "geo_precisione": "ROOFTOP", "ultima_data": "2026-08-26"}];
+
+const COLORE = '#d32f2f';
+const LINE_LABELS = {"COL": "Colorazione", "GOLD": "Gold Line", "STY": "Styling", "INP": "Inphinity", "KIT": "Kit", "SOL": "Solari", "TRI": "Trichology", "1.K": "1.K", "BRO": "Brow", "FOR": "Formazione", "GES": "Gestionale", "BEN": "Benvenuto", "ALB": "Album", "VARI": "Varie", "TEN": "Tensioattivi", "FDC": "Fondo Cassa", "CHA": "Cha", "IGIE": "Igienizzanti", "ATT": "Attrezzature", "ONC": "Onc", "CON": "Confezioni", "EMO": "Emo", "GLIC": "Glic", "EMU": "Emulsione", "OLV": "Olv", "GLI": "Gli", "CAT": "Cat", "CIO": "Cio", "PPI": "Ppi", "OLVB": "Olvb", "GOM": "Gom", "NEUT": "Neutro", "SOLV": "Solv", "FIS": "Fis", "LIP": "Lip"};
+
+const fmtEUR = n => n.toLocaleString('it-IT', {style:'currency', currency:'EUR', maximumFractionDigits:0});
+const fmtData = iso => iso ? new Date(iso + 'T00:00:00').toLocaleDateString('it-IT') : '';
+
+// jitter dei punti che condividono la stessa città/coordinate
+const groups = {};
+CLIENTS.forEach(c => {
+  const key = c.lat.toFixed(3) + ',' + c.lon.toFixed(3);
+  (groups[key] = groups[key] || []).push(c);
+});
+Object.values(groups).forEach(group => {
+  if (group.length === 1) return;
+  const R = 0.03 + Math.min(group.length, 20) * 0.0025;
+  group.forEach((c, i) => {
+    const angle = (2 * Math.PI * i) / group.length;
+    c._lat = c.lat + R * Math.cos(angle);
+    c._lon = c.lon + R * Math.sin(angle) / Math.cos(c.lat * Math.PI/180);
+  });
+});
+CLIENTS.forEach(c => { if (c._lat === undefined) { c._lat = c.lat; c._lon = c.lon; } });
+
+const map = L.map('map', { scrollWheelZoom: true }).setView([42.2, 12.6], 6);
+L.gridLayer.googleMutant({
+  type: 'roadmap',
+  maxZoom: 20
+}).addTo(map);
+setTimeout(() => {
+  map.invalidateSize();
+  if (CLIENTS.length > 0) {
+    const bounds = L.latLngBounds(CLIENTS.map(c => [c._lat, c._lon]));
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 11 });
+  }
+}, 0);
+
+// cerchi configurabili (vedi HEMI.html), caricati da cerchi.json se presente
+fetch('cerchi.json', { cache: 'no-store' })
+  .then(r => r.ok ? r.json() : [])
+  .catch(() => [])
+  .then(lista => {
+    if (!Array.isArray(lista)) return;
+    lista.forEach(c => {
+      const layer = L.circle([c.lat, c.lng], {
+        radius: (c.raggio_km || 100) * 1000,
+        color: c.colore || '#c0392b',
+        weight: 1.5,
+        fillColor: c.colore || '#c0392b',
+        fillOpacity: c.opacita != null ? c.opacita : 0.15
+      }).bindTooltip(`${c.nome} — raggio ${c.raggio_km || 100} km`);
+      layer.addTo(map);
+      layer.bringToBack();
+    });
+  });
+
+const markersById = {};
+
+function popupHTML(c) {
+  const lines = Object.entries(c.linee)
+    .filter(([k,v]) => v !== 0 || true)
+    .sort((a,b) => b[1]-a[1]);
+  const maxVal = Math.max(...lines.map(l => l[1]), 1);
+  const rows = lines.map(([k,v]) => {
+    const label = LINE_LABELS[k] || k;
+    const pct = Math.max(2, (v / maxVal) * 100);
+    return `<tr>
+      <td class="name">${label}
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:${COLORE}"></div></div>
+      </td>
+      <td class="val">${fmtEUR(v)}</td>
+    </tr>`;
+  }).join('');
+  return `
+    <div class="popup-title">${c.nome}</div>
+    <div class="popup-sub">${c.citta} (${c.prov})</div>
+    <table class="popup-lines">${rows}</table>
+    <div class="popup-total">Totale al ${fmtData(c.ultima_data)} &nbsp; ${fmtEUR(c.totale)}</div>
+  `;
+}
+
+CLIENTS.forEach(c => {
+  const marker = L.circleMarker([c._lat, c._lon], {
+    radius: 5.5,
+    color: '#ffffff',
+    weight: 1,
+    fillColor: COLORE,
+    fillOpacity: 0.9
+  });
+  marker.bindPopup(popupHTML(c), { maxWidth: 280 });
+  marker.addTo(map);
+  markersById[c.id] = marker;
+});
+
+// elenco clienti a sinistra, gia' ordinato per fatturato decrescente
+const clientiGrid = document.getElementById('clientiGrid');
+CLIENTS.forEach(c => {
+  const item = document.createElement('div');
+  item.className = 'cliente-item';
+  item.innerHTML = `<span class="nome">${c.nome}<span class="citta">${c.citta} (${c.prov})</span></span>
+    <span class="val">${fmtEUR(c.totale)}</span>`;
+  item.addEventListener('click', () => {
+    map.setView([c._lat, c._lon], 11);
+    markersById[c.id].openPopup();
+  });
+  clientiGrid.appendChild(item);
+});
+
+// note personali, salvate solo nel browser locale
+const noteEl = document.getElementById('noteText');
+const NOTE_KEY = 'note_mappa_agente_143';
+const DEFAULT_NOTE = `ZONA CONTRATTUALE
+Regione Lombardia
+
+PROVINCE GESTITE (tutti i clienti)
+-, BG, CN, CO, EE, IM, MB, MI, SO, VA, VC
+
+PROVINCE FUORI ZONA
+CN, IM, NO, VC
+
+CLIENTI FUORI ZONA (codice, nome, provincia)
+264 - GIOCONDA MOSCHIANO CONSULENTE DI BELLEZZA SNC (CN)
+371 - MOSCHIANO GIOCONDA (CN)
+3296 - POLLANO VERONICA (CN)
+467 - ROMEO MARIA (IM)
+3267 - SQUAIELLA JENNIFER (NO)
+3649 - A & A SNC di Dalmasso Adele & C. (VC)
+468 - RONCHETTA ALESSANDRO (VC)
+3546 - IL BORGO D'ORO SAGL (Svizzera)
+3427 - SCAMARCIA ALESSANDRO (Svizzera)`;
+try { noteEl.value = localStorage.getItem(NOTE_KEY) ?? DEFAULT_NOTE; } catch (e) { noteEl.value = DEFAULT_NOTE; }
+noteEl.addEventListener('input', () => {
+  try { localStorage.setItem(NOTE_KEY, noteEl.value); } catch (e) {}
+});
+</script>
+
+</body>
+</html>
