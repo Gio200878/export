@@ -5,6 +5,8 @@
   sql IN OUT AAAA-MM-GG copia la query SQL sostituendo GETDATE() & simili con
                         la data fissa; esce con 1 se non trova nessuna funzione-data
   verifica CSV AAAA MM  controlla che il csv contenga righe del mese richiesto
+  ricuci SUFFISSO NOME... in ogni NOME_SUFFISSO.html (cartella corrente) fa puntare
+                        i link del quadro (const LINKS) alle copie NOME_SUFFISSO.html
 """
 import csv, datetime as dt, calendar, re, sys
 
@@ -74,8 +76,37 @@ def cmd_verifica(path, anno, mese):
     return 0
 
 
+def cmd_ricuci(suffisso, *nomi):
+    pat_riga = re.compile(r'^(const LINKS = )(.*)$', re.M)
+    pat_link = re.compile(r'"((?:direzione|progressus|area|agente)_[a-z0-9]+)\.html"')
+    ko = 0
+    for nome in nomi:
+        path = f'{nome}_{suffisso}.html'
+        try:
+            testo = open(path, encoding='utf-8-sig').read()
+        except OSError:
+            print(f'ERRORE: {path} non trovato')
+            ko += 1
+            continue
+        m = pat_riga.search(testo)
+        if not m:
+            print(f'ERRORE: {path}: riga "const LINKS" non trovata')
+            ko += 1
+            continue
+        riga, n = pat_link.subn(lambda x: f'"{x.group(1)}_{suffisso}.html"', m.group(2))
+        testo = testo[:m.start(2)] + riga + testo[m.end(2):]
+        # il riquadro Progressus ha il suo link ("pagina") fuori da LINKS
+        testo, n2 = re.subn(r'("pagina": ")(progressus_[a-z0-9]+)\.html"',
+                            lambda x: f'{x.group(1)}{x.group(2)}_{suffisso}.html"', testo)
+        n += n2
+        open(path, 'w', encoding='utf-8-sig', newline='').write(testo)
+        print(f'{path}: {n} link ricuciti')
+    return 1 if ko else 0
+
+
 if __name__ == '__main__':
     c, a = sys.argv[1], sys.argv[2:]
     sys.exit({'date': lambda: cmd_date(a[0] if a else ''),
               'sql': lambda: cmd_sql(*a),
-              'verifica': lambda: cmd_verifica(*a)}[c]())
+              'verifica': lambda: cmd_verifica(*a),
+              'ricuci': lambda: cmd_ricuci(*a)}[c]())
