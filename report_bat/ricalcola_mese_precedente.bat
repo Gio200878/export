@@ -168,13 +168,13 @@ for %%F in (%TUTTI%) do (
   copy /y "%%F.html" "%%F_!MESE!.html" >nul
   copy /y "%%F.html" "%%F_!MESE!_!ANNO!.html" >nul
 )
-"%PY%" "%EXPORT%\ricalcola_helper.py" ricuci "!MESE!" %TUTTI%>> "%LOG%" 2>&1
+"%PY%" "%EXPORT%\ricuci_link.py" "!MESE!" %TUTTI%>> "%LOG%" 2>&1
 if errorlevel 1 (
   echo ERRORE: link dell'archivio !MESE! non ricuciti>> "%LOG%"
   echo ERRORE: link dell'archivio !MESE! non ricuciti
   goto :pulizia_errore
 )
-"%PY%" "%EXPORT%\ricalcola_helper.py" ricuci "!MESE!_!ANNO!" %TUTTI%>> "%LOG%" 2>&1
+"%PY%" "%EXPORT%\ricuci_link.py" "!MESE!_!ANNO!" %TUTTI%>> "%LOG%" 2>&1
 if errorlevel 1 (
   echo ERRORE: link dell'archivio annuale non ricuciti>> "%LOG%"
   echo ERRORE: link dell'archivio annuale non ricuciti

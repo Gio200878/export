@@ -17,9 +17,9 @@ if errorlevel 1 exit /b 1
 for /f "tokens=1,2,3" %%A in (_ric.tmp) do (set "MESE=%%A" & set "ANNO=%%B")
 del "_ric.tmp" >nul 2>nul
 echo Riparo i link di !MESE! !ANNO! nei file *_!MESE!.html e *_!MESE!_!ANNO!.html
-"%PY%" ricalcola_helper.py ricuci "!MESE!" %TUTTI%>> "%LOG%" 2>&1
+"%PY%" ricuci_link.py "!MESE!" %TUTTI%>> "%LOG%" 2>&1
 if errorlevel 1 (echo ERRORE, vedi %LOG% & exit /b 1)
-"%PY%" ricalcola_helper.py ricuci "!MESE!_!ANNO!" %TUTTI%>> "%LOG%" 2>&1
+"%PY%" ricuci_link.py "!MESE!_!ANNO!" %TUTTI%>> "%LOG%" 2>&1
 if errorlevel 1 (echo ERRORE, vedi %LOG% & exit /b 1)
 if /i "%~2"=="noupload" (echo Fatto, upload saltato. & exit /b 0)
 set /a ERRORI=0
