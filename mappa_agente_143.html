@@ -319,7 +319,34 @@ CLIENTS.forEach(c => {
 // note personali, salvate solo nel browser locale
 const noteEl = document.getElementById('noteText');
 const NOTE_KEY = 'note_mappa_agente_143';
-try { noteEl.value = localStorage.getItem(NOTE_KEY) || ''; } catch (e) {}
+const DEFAULT_NOTE = `ZONA CONTRATTUALE
+Regione Lombardia
+
+PROVINCE GESTITE (tutti i clienti)
+-, BG, CN, CO, EE, IM, MB, MI, SO, VA, VC
+
+PROVINCE CON FATTURATO 2026 ≠ 0
+BG, CO, EE, IM, MB, MI, SO, VA, VC
+
+PROVINCE FUORI ZONA
+CN, IM, NO, VC
+
+CLIENTI FUORI ZONA (codice, nome, provincia)
+264 - GIOCONDA MOSCHIANO CONSULENTE DI BELLEZZA SNC (CN)
+371 - MOSCHIANO GIOCONDA (CN)
+3296 - POLLANO VERONICA (CN)
+467 - ROMEO MARIA (IM)
+3267 - SQUAIELLA JENNIFER (NO)
+3649 - A & A SNC di Dalmasso Adele & C. (VC)
+468 - RONCHETTA ALESSANDRO (VC)
+
+RIEPILOGO
+N. clienti assegnati: 57
+N. clienti con fatturato 2026 ≠ 0: 37
+N. clienti fuori zona: 7
+Fatturato 2026 fuori zona: 33.785,42 €
+N. clienti da verificare: 4`;
+try { noteEl.value = localStorage.getItem(NOTE_KEY) ?? DEFAULT_NOTE; } catch (e) { noteEl.value = DEFAULT_NOTE; }
 noteEl.addEventListener('input', () => {
   try { localStorage.setItem(NOTE_KEY, noteEl.value); } catch (e) {}
 });
