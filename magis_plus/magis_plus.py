@@ -49,7 +49,22 @@ ANNO_PSD = 2026
 MESI_IT = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
            "settembre", "ottobre", "novembre", "dicembre"]
 
-LEVELS = [4, 5, 6, 7, 8, 9]  # colonne delle tabelle "GIUSTI PARAMETRI" / "MEDIA PASSAGGI"
+# Colonne delle tabelle "GIUSTI PARAMETRI" / "MEDIA PASSAGGI" dei fogli parametri: 5, 6, 7, 8, 9 stelle e 9 stelle PLUS
+# (qui indicata con 10). I 6 valori di ogni riga seguono questo ordine.
+LEVELS = [5, 6, 7, 8, 9, 10]
+
+
+def idx_stelle(s):
+    """Posizione (0..5) della colonna di `s` stelle nelle tabelle dei parametri; 10 = "9 stelle plus"."""
+    return max(0, min(len(LEVELS) - 1, int(s) - LEVELS[0]))
+
+
+def nome_stelle(s):
+    return "9 stelle plus" if int(s) >= 10 else f"{int(s)} stelle"
+
+
+def etichetta_livello(s):
+    return "9 plus" if int(s) >= 10 else str(int(s))
 
 
 # --------------------------------------------------------------------------- util
@@ -161,7 +176,7 @@ def leggi_cliente(ws, riga):
 def leggi_par(ws):
     """Legge una tabella 'parametri (24)' o '(25)': ogni riga di interesse ha
     un'etichetta in una cella e 6 valori nelle 6 celle successive (o dopo qualche
-    cella vuota), nell'ordine delle stelle 4,5,6,7,8,9."""
+    cella vuota), nell'ordine delle stelle 5,6,7,8,9,9plus."""
     def trova(label):
         for row in ws.iter_rows():
             for c in row:
@@ -241,19 +256,13 @@ def leggi_styling(codice, mesi):
 
 
 # --------------------------------------------------------------------------- calc
-IND_9 = LEVELS.index(9)
-IND_8 = LEVELS.index(8)
-
 
 def calcola(genere, op, pas, gg, mesi, att, tar_sal, par, tariffe_giuste, stelle_target, sty_raw=None):
     """Ricalcola presenze/servizi/fiche ideali al livello di stelle richiesto,
-    con la tabella dei parametri ufficiali (colonne 4..9 stelle).
-    NB: 9 stelle usa, per costruzione, gli stessi valori di 8 stelle (vedi erratum
-    nelle istruzioni di calcolo: la colonna dedicata "9 stelle" nel foglio
-    coincide con "9 stelle plus", non con "9 stelle")."""
-    i = LEVELS.index(stelle_target) if stelle_target in LEVELS else IND_9
-    if stelle_target == 9:
-        i = IND_8  # applica la correzione: 9 stelle = valori della colonna 8 stelle
+    con la tabella dei parametri ufficiali: le colonne sono 5, 6, 7, 8, 9 e 9 stelle plus (=10).
+    Ogni livello usa i valori della propria colonna."""
+    stelle_target = max(LEVELS[0], min(LEVELS[-1], int(stelle_target)))
+    i = idx_stelle(stelle_target)
     ide = op * gg * par["media"][i]
     eff = ide * 0.9 if genere == "F" else ide
     colore_i = eff * par["Colore"][i] / 100
@@ -507,8 +516,10 @@ def tabella_servizi(d):
     for nm, att_pct, tot_ide, base in d["righe"]:
         att_s = f"{att_pct*100:.0f}%" if att_pct is not None else "—"
         att_tot = d["sty_att_tot"] if nm == "Styling" and d["sty_att_tot"] else (att_pct * d["pas"] if att_pct is not None else None)
+        pct_i = d["pct_ide"].get(nm.split(" (")[0])   # "Mantenimento (PROD)" -> "Mantenimento"
+        ide_s = f"{pct_i:.0f}%" if pct_i is not None else "—"
         rows += (f"<tr><td>{nm}</td><td>{att_s}</td><td>{n0(att_tot) if att_tot is not None else '—'}</td>"
-                 f"<td class='tg'></td><td class='tg'>{n0(tot_ide)}</td><td>{base}</td></tr>")
+                 f"<td class='tg'>{ide_s}</td><td class='tg'>{n0(tot_ide)}</td><td>{base}</td></tr>")
     return f"<table><thead>{head}</thead><tbody>{rows}</tbody></table>"
 
 
@@ -571,7 +582,7 @@ def pagina_sintesi(nome, gen, d, cli, codice):
         eff_nota = f"{n0(ide)} × (1 − 10%). Media mensile {n0(eff / mesi)}, {n1(eff / (op * gg))} al giorno per operatore"
     else:
         eff_nota = f"Uguali alle ideali. Media mensile {n0(eff / mesi)}, {n1(eff / (op * gg))} al giorno per operatore"
-    st = d["stelle"]
+    st = nome_stelle(d["stelle"])
     schede = []
     for nm, chiave in [("Cleansing", "Cleansing"), ("Taglio", "Taglio"), ("Colore", "Colore"), ("GOLD20", "GOLD20"),
                        ("Trattamenti", "Trattamenti"), ("Styling", "Styling"), ("Barba", "Barba"),
@@ -589,7 +600,7 @@ def pagina_sintesi(nome, gen, d, cli, codice):
         schede.append(scheda_servizio(nm, tot_att, nota, tot_ide, d["pct_ide"][nm]))
     return pg(f"""<div class="sv">
       <h1 class="ph">Sviluppo <b>{nome}</b></h1>
-      <p class="lede lp">Cliente {codice}, {salone}. Periodo PSD {periodo}, {mesi} mesi rilevati. Obiettivo {st} stelle.</p>
+      <p class="lede lp">Cliente {codice}, {salone}. Periodo PSD {periodo}, {mesi} mesi rilevati. Obiettivo {st}.</p>
       <div class="k4">
         <div><b>{n0(d['pas'])}</b><span>Passaggi nel periodo</span></div>
         <div><b>{n2(op)}</b><span>Operatori</span></div>
@@ -597,15 +608,15 @@ def pagina_sintesi(nome, gen, d, cli, codice):
         <div><b>{n0(gg)}</b><span>Giorni lavorativi nel periodo</span></div>
       </div>
       <div class="k3">
-        <div><span>Presenze ideali, {st} stelle</span><b>{n0(ide)}</b>
+        <div><span>Presenze ideali, {st}</span><b>{n0(ide)}</b>
           <small>{n2(op)} op. × {n0(gg)} gg × {n1(d['media_gg'])} al giorno. Media mensile {n0(ide / mesi)}</small></div>
         <div><span>Presenze effettive</span><b>{n0(eff)}</b><small>{eff_nota}</small></div>
         <div class="gd"><span>Fiche media</span><b class="fiche">{eur(d.get('fiche_att'))} <em>→</em> {eur(d['fic_ide'])}</b>
-          <small>Attuale → ideale {st} stelle</small></div>
+          <small>Attuale → ideale {st}</small></div>
       </div>
       <div class="wc"><div class="wh">Monacelli Quality Salon</div>
         <div class="sg">{"".join(schede)}</div>
-        <div class="wf">Totali del periodo: attuale e ideale. Tra parentesi la percentuale attuale e quella ideale a {st} stelle.</div>
+        <div class="wf">Totali del periodo: attuale e ideale. Tra parentesi la percentuale attuale e quella ideale a {st}.</div>
       </div>
       <div class="pills"><a href="#tab-{gen}">Tabella dei servizi e calcolo fiche</a><a href="#stelle-{gen}">Cammino verso le stelle</a></div></div>
     """, f"svc-{gen}", f"Sviluppo {nome}")
@@ -614,7 +625,7 @@ def pagina_sintesi(nome, gen, d, cli, codice):
 def pagina_sviluppo(nome, gen, d):
     return pg(f"""
       <h2>Servizi e fiche <b>{nome}</b></h2>
-      <p class="lede">Obiettivo {d['stelle']} stelle · {d['mesi']:.0f} mesi rilevati · {d['gg']:.0f} giorni lavorativi.</p>
+      <p class="lede">Obiettivo {nome_stelle(d['stelle'])} · {d['mesi']:.0f} mesi rilevati · {d['gg']:.0f} giorni lavorativi.</p>
       <div class="kpis">
         <div><b>{n0(d['pas'])}</b><span>Passaggi nel periodo</span></div>
         <div><b>{n1(d['op'])}</b><span>Operatori</span></div>
@@ -629,7 +640,7 @@ def pagina_sviluppo(nome, gen, d):
 
 
 def pagina_stelle(nome, gen, righe_livelli, fic_livelli, pot_livelli, stelle_target):
-    head = "".join(f"<th class='{'tg' if s==stelle_target else ''}'>{s}</th>" for s in LEVELS)
+    head = "".join(f"<th class='{'tg' if s==stelle_target else ''}'>{etichetta_livello(s)}</th>" for s in LEVELS)
     nomi = ["Cleansing", "Colore", "Gold su colore", "Mac su colore", "Taglio", "Trattamenti"]
     body = ""
     for i, chiave in enumerate(["Cleansing", "Colore", "Gold", "Mac", "Taglio", "Trattamenti"]):
@@ -639,7 +650,7 @@ def pagina_stelle(nome, gen, righe_livelli, fic_livelli, pot_livelli, stelle_tar
     fic_cells = "".join(f"<td class='{'tg' if LEVELS[j]==stelle_target else ''}'>{eur(fic_livelli[j])}</td>" for j in range(6))
     return pg(f"""
       <h2>{nome}: <b>cammino verso le stelle</b></h2>
-      <p class="lede">Confronto fra i livelli di stelle 4→9. La colonna evidenziata è l'obiettivo scelto.</p>
+      <p class="lede">Confronto fra i livelli da 5 stelle a 9 stelle plus. La colonna evidenziata è l'obiettivo scelto.</p>
       <table><thead><tr><th></th>{head}</tr></thead><tbody>{body}
       <tr class="tot"><td>Potenziale</td>{pot_cells}</tr>
       <tr class="tot"><td>Fiche media</td>{fic_cells}</tr></tbody></table>
@@ -741,7 +752,7 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
         pot, fic = [], []
         for s in LEVELS:
             dd = calcola("F", op_f, pas_f, gg, mesi, att_f, tar_sal_f, par_f, tar_giuste, s, sty_raw=sty_raw)
-            i = LEVELS.index(s) if s != 9 else IND_8
+            i = idx_stelle(s)
             for k in livelli:
                 livelli[k].append(par_f[k][i])
             pot.append(dd["fic_tot"]); fic.append(dd["fic_ide"])
@@ -755,7 +766,7 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
         pot, fic = [], []
         for s in LEVELS:
             dd = calcola("M", op_m, pas_m, gg, mesi, att_m, {}, par_m, {}, s)
-            i = LEVELS.index(s) if s != 9 else IND_8
+            i = idx_stelle(s)
             for k in livelli:
                 livelli[k].append(par_m[k][i])
             pot.append(dd["fic_tot"]); fic.append(dd["fic_ide"])
@@ -1026,11 +1037,12 @@ def main():
     tar_giuste = leggi_tariffe_giuste(wb["parametri (24)"])
 
     def chiedi_stelle(default):
-        s = input(f"Obiettivo stelle (default {default}): ").strip()
+        s = input(f"Obiettivo stelle, da 5 a 9 (10 = 9 stelle plus) (default {default}): ").strip()
         try:
-            return int(s) if s else default
+            v = int(s) if s else default
         except ValueError:
             return default
+        return max(LEVELS[0], min(LEVELS[-1], v))
 
     dF = dM = None
     if cli["pas_f"] and cli["op_f"]:
