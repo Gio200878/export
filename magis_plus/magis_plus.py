@@ -233,7 +233,8 @@ def leggi_styling(codice, mesi):
                 anno, mese, cod, fam = row[0], int(row[1]), row[2].strip(), row[4].strip()
             except (ValueError, IndexError):
                 continue
-            if cod == str(codice).strip() and fam.upper() == "STY" and 1 <= mese <= int(mesi):
+            # solo l'anno del PSD: il CSV puo' contenere anche gli anni precedenti
+            if cod == str(codice).strip() and fam.upper() == "STY" and 1 <= mese <= int(mesi) and row[0].strip() == str(ANNO_PSD):
                 tot += as_num(row[5], 0)
                 trovato = True
     return tot if trovato else None
