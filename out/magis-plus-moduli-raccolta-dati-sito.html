@@ -193,6 +193,7 @@ nav.top .navend{margin-left:auto}
 
 <div class="actions">
   <button class="primary" data-save="gestione">Salva modulo Gestione e tariffe</button>
+  <button class="ghost" data-copia="gestione">Scarica copia JSON</button>
   <span class="status" id="st-gestione"></span>
 </div>
 </div>
@@ -295,6 +296,7 @@ nav.top .navend{margin-left:auto}
 <div class="actions">
   <button class="ghost" data-newop>+ Aggiungi un altro collaboratore</button>
   <button class="primary" data-save="collab">Salva tutti i collaboratori</button>
+  <button class="ghost" data-copia="collab">Scarica copia JSON</button>
   <span class="status" id="st-collab"></span>
 </div>
 </div>
@@ -350,6 +352,7 @@ nav.top .navend{margin-left:auto}
 
 <div class="actions">
   <button class="primary" data-save="salone">Salva Immagine e sogno del salone</button>
+  <button class="ghost" data-copia="salone">Scarica copia JSON</button>
   <span class="status" id="st-salone"></span>
 </div>
 </div>
@@ -363,6 +366,7 @@ nav.top .navend{margin-left:auto}
   <div class="actions">
     <button class="ghost" type="button" id="sogno-aggiungi">+ Aggiungi un altro sogno</button>
     <button class="primary" type="button" data-save="sogno">Salva i sogni</button>
+    <button class="ghost" type="button" data-copia="sogno">Scarica copia JSON</button>
     <span class="status" id="st-sogno"></span>
   </div>
   <div class="scale-hint" style="margin-top:10px">Se una persona ha già un sogno salvato, quello nuovo lo aggiorna. I sogni delle altre persone restano invariati.</div>
@@ -482,11 +486,29 @@ function datiSalone(){
   };
 }
 
+// Scarica sul dispositivo lo stesso file JSON che riceverebbe Drive (copia di sicurezza)
+function scaricaJson(filename, payload){
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+let SOLO_COPIA = false;   // true quando si preme "Scarica copia JSON": nessun invio a Drive
+document.querySelectorAll('[data-copia]').forEach(b => b.onclick = () => {
+  SOLO_COPIA = true;
+  document.querySelector(`[data-save="${b.dataset.copia}"]`).click();
+});
+
 async function saveData(obj, statusId){
+  const copia = SOLO_COPIA; SOLO_COPIA = false;
   const s = datiSalone();
   if (!s.CODICE) { setStatus(statusId, 'Inserisci il codice salone (in cima alla pagina) prima di salvare.', true); return; }
   const filename = fname(s.CODICE, s.NOME_SALONE);
   const payload = Object.assign({}, s, obj);
+  if (copia) {
+    scaricaJson(filename, payload);
+    setStatus(statusId, 'Copia JSON scaricata sul dispositivo (non inviata a Drive).');
+    return;
+  }
   if (!ENDPOINT_URL) {
     setStatus(statusId, 'Salvataggio non configurato: manca l\'indirizzo del servizio (ENDPOINT_URL) in cima allo script.', true);
     return;
@@ -505,7 +527,8 @@ async function saveData(obj, statusId){
     setStatus(statusId, 'Salvataggio avvenuto con successo.');
     setStatus('st-salvataggio', 'Salvataggio avvenuto con successo.');
   } catch (e) {
-    const msg = `Salvataggio non riuscito: ${e.message || e}. Riprova.`;
+    scaricaJson(filename, payload);   // copia di riserva: il file resta sul dispositivo
+    const msg = `Salvataggio su Drive non riuscito: ${e.message || e}. Ho scaricato una copia del file sul tuo dispositivo: conservala e inviala a Monacelli Italy, oppure riprova più tardi.`;
     setStatus(statusId, msg, true);
     setStatus('st-salvataggio', msg, true);
   }
