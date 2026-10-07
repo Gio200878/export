@@ -26,6 +26,7 @@ import webbrowser
 
 import magis_plus_teoria as teoria
 import magis_plus_fonts as fonts
+import magis_plus_sondaggio as sondaggio
 import magis_plus_pagine as pagine_modello
 import magis_plus_moderne as moderne
 
@@ -43,7 +44,7 @@ OUT_DIR = os.path.join(HERE, "output")
 # pagine 2-7, 11, 13, 14, 19, 20 e 36 del modello). Vengono inserite nel PDF finale senza rielaborarle,
 # cosi' risultano identiche al modello.
 MODELLO_PATH = os.path.join(HERE, "magis_plus_pagine_modello.pdf")
-MODELLO_PAGINE = [2, 3, 4, 5, 6, 7, 11, 13, 14, 19, 20, 36]  # numero pagina nel modello originale
+MODELLO_PAGINE = [2, 3, 4, 5, 6, 7, 11, 8, 13, 14, 19, 20, 36]  # numero pagina nel modello originale
 
 ANNO_PSD = 2026
 MESI_IT = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
@@ -409,6 +410,19 @@ def trova_json_modulo(codice, tipo):
     return trovati[0][1]
 
 
+def trova_sondaggio(codice):
+    """Risposte del sondaggio clienti del salone (file 'Magis Plus Sondaggio Clienti - <nome> (<codice>).json',
+    nella cartella dello script o in Download). Ritorna la lista delle risposte, o [] se il sondaggio non c'e'."""
+    chiave = str(codice).strip()
+    if chiave not in _CACHE_JSON:
+        trova_json_modulo(codice, "Immagine e Sogno")      # riempie la cache (stessa ricerca dei moduli)
+    validi, _ = _CACHE_JSON[chiave]
+    liste = [d for _t, _p, d in sorted(validi, key=lambda x: x[0]) if sondaggio.sondaggio_valido(d)]
+    risp = sondaggio.unisci(liste)
+    print(f"   Sondaggio clienti: {len(risp)} risposte" if risp else "   Sondaggio clienti: non presente (copertina e pagine omesse)")
+    return risp
+
+
 FONTFACE_CSS = (
     '@font-face { font-family:"BSD"; src:url(data:font/ttf;base64,' + fonts.BSD_B64 + '); font-weight:100 900; }\n'
     '@font-face { font-family:"Fig"; src:url(data:font/ttf;base64,' + fonts.FIG_B64 + '); font-weight:300 900; }\n'
@@ -416,7 +430,7 @@ FONTFACE_CSS = (
     '.page.back-bg{background-image:url(data:image/jpeg;base64,' + fonts.BACK_B64 + ');background-size:cover;background-position:center}\n'
 )
 
-CSS = FONTFACE_CSS + pagine_modello.ABS_CSS + moderne.CSS + """
+CSS = FONTFACE_CSS + pagine_modello.ABS_CSS + moderne.CSS + sondaggio.CSS + """
 @page { size: A4; margin: 0; }
 *{box-sizing:border-box}
 body{margin:0;background:#0F1330;color:#EEEDF8;font-family:"Fig",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -528,16 +542,16 @@ th,td,.m-row,.m-mh,.m-mr,.m-tec th,.m-tec td,.m-strip{border-color:#DADDEA}
 a.pill,.pills a{border-color:#B8892A;color:#B8892A}
 .nav{background:#F1F2F8;border-top-color:#DADDEA}
 """
-def _css_v2():
+def _css_v2(regole=None):
     pfx = "body.v2 .page:not(.cover-bg):not(.back-bg) "
     out = []
-    for blocco in re.findall(r"([^{}]+)\{([^{}]*)\}", _V2_REGOLE):
+    for blocco in re.findall(r"([^{}]+)\{([^{}]*)\}", regole or _V2_REGOLE):
         sel = ",".join(pfx + x.strip() if not x.strip().startswith(".page") else "body.v2 " + x.strip() + ":not(.cover-bg):not(.back-bg)" for x in blocco[0].split(","))
         out.append(sel + "{" + blocco[1] + "}")
     return "\n".join(out)
 BODYCLS = "v2" if V2 else ""
 if V2:
-    CSS += _css_v2()
+    CSS += _css_v2() + "\n" + _css_v2(sondaggio.CSS_V2)
 
 
 def pg(body, pid, title, nav=True, extra_cls=""):
@@ -717,12 +731,17 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
                                or ms.get("numero_team") is not None)
     html_immagine = pg(moderne.pagina_immagine(ms, nome_salone), "immagine-pg", "Immagine") if ha_immagine else None
 
+    # sondaggio clienti (facoltativo): file 'Magis Plus Sondaggio Clienti - <nome> (<codice>).json'
+    risp_sond = trova_sondaggio(codice)
+
     # indice dinamico: solo le voci realmente presenti in questo documento
     voci_indice = [("cosa", "Cos\'e\' Magis Plus")]
     if html_sogno:
         voci_indice.append(("sogno", "Il mio sogno"))
     if html_immagine:
         voci_indice.append(("immagine", "Immagine interna ed esterna"))
+    if risp_sond:
+        voci_indice.append(("sondaggio", "Elaborazione sondaggio"))
     if dF or dM:
         voci_indice.append(("sviluppo", "Progetto di sviluppo personalizzato"))
     if collab:
@@ -735,6 +754,8 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
         NAV.append(("sogno", "Il mio sogno"))
     if html_immagine:
         NAV.append(("immagine", "Immagine"))
+    if risp_sond:
+        NAV.append(("sondaggio", "Sondaggio"))
     if dF or dM:
         NAV.append(("sviluppo", "Sviluppo"))
     if collab:
@@ -773,6 +794,13 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
         add_modello([11], pg('<h1>Immagine <b>interna ed esterna</b></h1>', "immagine-cover", "Immagine", nav=False),
                     "Immagine interna ed esterna", "immagine")
         add(html_immagine, "Immagine del salone")
+
+    if risp_sond:
+        # copertina "ELABORAZIONE SONDAGGIO" (pagina 8 del modello) + pagine con le risposte e i grafici
+        add_modello([8], pg('<h1>Elaborazione <b>sondaggio</b></h1>', "sondaggio-cover", "Sondaggio", nav=False),
+                    "Elaborazione sondaggio", "sondaggio")
+        for corpo, pid, tit in sondaggio.pagine(risp_sond, nome_salone):
+            add(pg(corpo, pid, tit), tit)
 
     if dF or dM:
         # copertina "PROGETTO DI SVILUPPO" + pagina di testo (pagine 13 e 14 del modello)
