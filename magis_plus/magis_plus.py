@@ -502,6 +502,44 @@ NAV = [("indice", "Indice")]
 ANCORE = {}  # nome ancora -> indice dell'elemento (pagine generate o copiate dal modello)
 
 
+# ------------------------------------------------------------------ versione 2: pagine a sfondo bianco
+V2 = "--v2" in sys.argv
+_V2_REGOLE = """
+.page{background:#fff;color:#1D2233}
+h1,h2,.ph b,.m-card h4,.m-cols h4,a.nm,.ch,.k4 b,.k3 b,.m-kpi b,.m-call,.seg{color:#1D2233}
+h1 b,h2 b,th.tg,.fiche,.k3 b.fiche,.persona a,.m-gen b,.nav .pg,.nav a:first-child{color:#B8892A}
+p.lede,.kpis span,.k4 span,.k3 span,.k3 small,.m-kpi span,.m-gen span,.m-strip span,.m-b,.m-b b.nd,a.nm small,.m-mh,.m-tec th,.m-v.nd,.nav a,th{color:#5C6280}
+h3{border-top-color:#DADDEA}
+.kpis,.k4,.m-kpi{background:#DADDEA;border-color:#DADDEA}
+.kpis div,.k4 div,.m-kpi div{background:#F4F5FA}
+table,.m-tec,.m-card,.m-map,.m-call,.callout,.k3>div{background:#F4F5FA;border-color:#DADDEA}
+th{background:#ECEEF6}
+th,td,.m-row,.m-mh,.m-mr,.m-tec th,.m-tec td,.m-strip{border-color:#DADDEA}
+.tg{background:rgba(184,137,42,.14)}
+.callout,.m-call{border-left-color:#B8892A}
+.m-call.g{border-color:rgba(184,137,42,.4);background:rgba(184,137,42,.1)}
+.pillars div{border-top-color:#B8892A}
+.ch{border-color:#C5C9DC}
+.ch.ok b{color:#1E9A62}.ch.br b{color:#B8892A}.ch.no,.ch.no b{color:#D63A5F}.ch.no{border-color:#D63A5F}
+.m-card h4 em.g{color:#1E9A62}.m-card h4 em.w{color:#B8892A}
+.m-dots i{background:#DADDEA}.m-dots i.on{background:#6B4FE0}
+.m-b .bar{background:#DADDEA}.m-b .bar i{background:#6B4FE0}.m-b b.z{color:#D63A5F}
+.m-v{color:#1D2233}.m-v.low{background:rgba(214,58,95,.12);color:#D63A5F}
+a.pill,.pills a{border-color:#B8892A;color:#B8892A}
+.nav{background:#F1F2F8;border-top-color:#DADDEA}
+"""
+def _css_v2():
+    pfx = "body.v2 .page:not(.cover-bg):not(.back-bg) "
+    out = []
+    for blocco in re.findall(r"([^{}]+)\{([^{}]*)\}", _V2_REGOLE):
+        sel = ",".join(pfx + x.strip() if not x.strip().startswith(".page") else "body.v2 " + x.strip() + ":not(.cover-bg):not(.back-bg)" for x in blocco[0].split(","))
+        out.append(sel + "{" + blocco[1] + "}")
+    return "\n".join(out)
+BODYCLS = "v2" if V2 else ""
+if V2:
+    CSS += _css_v2()
+
+
 def pg(body, pid, title, nav=True, extra_cls=""):
     navhtml = ""
     if nav:
@@ -618,7 +656,7 @@ def pagina_sintesi(nome, gen, d, cli, codice):
         <div class="sg">{"".join(schede)}</div>
         <div class="wf">Totali del periodo: attuale e ideale. Tra parentesi la percentuale attuale e quella ideale a {st}.</div>
       </div>
-      <div class="pills"><a href="#tab-{gen}">Tabella dei servizi e calcolo fiche</a><a href="#stelle-{gen}">Cammino verso le stelle</a></div></div>
+      <div class="pills"><a href="#tab-{gen}">Tabella dei servizi e calcolo fiche</a><a href="#stelle-{gen}">Cammino verso le Stelle</a></div></div>
     """, f"svc-{gen}", f"Sviluppo {nome}")
 
 
@@ -649,7 +687,7 @@ def pagina_stelle(nome, gen, righe_livelli, fic_livelli, pot_livelli, stelle_tar
     pot_cells = "".join(f"<td class='{'tg' if LEVELS[j]==stelle_target else ''}'>{n0(pot_livelli[j])}</td>" for j in range(6))
     fic_cells = "".join(f"<td class='{'tg' if LEVELS[j]==stelle_target else ''}'>{eur(fic_livelli[j])}</td>" for j in range(6))
     return pg(f"""
-      <h2>{nome}: <b>cammino verso le stelle</b></h2>
+      <h2>{nome}: <b>Cammino verso le Stelle</b></h2>
       <p class="lede">Confronto fra i livelli da 5 stelle a 9 stelle plus. La colonna evidenziata è l'obiettivo scelto.</p>
       <table><thead><tr><th></th>{head}</tr></thead><tbody>{body}
       <tr class="tot"><td>Potenziale</td>{pot_cells}</tr>
@@ -756,7 +794,7 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
             for k in livelli:
                 livelli[k].append(par_f[k][i])
             pot.append(dd["fic_tot"]); fic.append(dd["fic_ide"])
-        add(pagina_stelle("Femminile", "F", livelli, fic, pot, dF["stelle"]), "Femminile: cammino verso le stelle")
+        add(pagina_stelle("Femminile", "F", livelli, fic, pot, dF["stelle"]), "Femminile: Cammino verso le Stelle")
 
     if dM:
         dM_ = dict(dM, fiche_att=cli["fiche_att_m"])
@@ -770,7 +808,7 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
             for k in livelli:
                 livelli[k].append(par_m[k][i])
             pot.append(dd["fic_tot"]); fic.append(dd["fic_ide"])
-        add(pagina_stelle("Maschile", "M", livelli, fic, pot, dM["stelle"]), "Maschile: cammino verso le stelle")
+        add(pagina_stelle("Maschile", "M", livelli, fic, pot, dM["stelle"]), "Maschile: Cammino verso le Stelle")
 
     if collab:
         # copertina rossa "ANALISI COLLABORATORI" + pagina "ANALISI TEAM" (pagine 19 e 20 del modello)
@@ -800,7 +838,7 @@ def costruisci_pagine(cli, codice, dF, dM, par_f, par_m, tar_sal_f, tar_giuste, 
 
 def render_html_pdf(cli, codice, pagine):
     """pagine: lista di stringhe HTML (una sezione .page ciascuna)."""
-    return f'<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>{cli["salone"] or codice} — Magis Plus</title><style>{CSS}</style></head><body>{"".join(pagine)}</body></html>'
+    return f'<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>{cli["salone"] or codice} — Magis Plus</title><style>{CSS}</style></head><body class="{BODYCLS}">{"".join(pagine)}</body></html>'
 
 
 # ------------------------------------------------------------------ stampa in PDF
@@ -1057,7 +1095,7 @@ def main():
                      cli["att_m"], {}, par_m, {}, stelle_m)
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    nome_file = nome_per_file(codice, cli["salone"])
+    nome_file = nome_per_file(codice, cli["salone"]) + ("_v2" if V2 else "")
     html_path = os.path.join(OUT_DIR, nome_file + ".html")
     pdf_path = os.path.join(OUT_DIR, nome_file + ".pdf")
 
