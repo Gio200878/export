@@ -377,12 +377,13 @@ nav.top .navend{margin-left:auto}
 <div class="panel" id="p-sondaggio">
 <section class="card">
   <h2>Sondaggio <b>clienti</b></h2>
-  <div class="sub">Crea il sondaggio &ldquo;Che cosa pensi di noi&rdquo; per il salone indicato in &ldquo;Dati salone&rdquo; qui sopra (codice e nome) e genera il QR code da inviare al salone. I clienti rispondono dal telefono e le risposte arrivano in Drive, in un unico file per salone.</div>
+  <div class="sub">Crea il sondaggio &ldquo;Che cosa pensi di noi&rdquo; per il salone indicato in &ldquo;Dati salone&rdquo; qui sopra (codice e nome) e genera il QR code da inviare al salone. Vale anche per i saloni già inseriti: basta reinserire codice e nome. Se il sondaggio esiste già non viene duplicato e puoi correggerne il nome con &ldquo;Aggiorna nome del sondaggio&rdquo;. I clienti rispondono dal telefono e le risposte arrivano in Drive, in un unico file per salone.</div>
   <div class="grid">
     <div class="field wide"><label for="sv-url">Indirizzo della pagina del sondaggio</label><input id="sv-url" inputmode="url" autocomplete="off"></div>
   </div>
   <div class="actions">
     <button class="primary" id="sv-crea">Crea sondaggio e genera QR</button>
+    <button class="ghost" id="sv-rinomina" title="Cambia il nome del salone nel sondaggio già creato">Aggiorna nome del sondaggio</button>
     <span class="status" id="st-sondaggio"></span>
   </div>
 </section>
@@ -729,18 +730,19 @@ document.querySelector('[data-save="sogno"]').onclick = async () => {
     g.fillText('La tua opinione è preziosa: aiutaci a crescere.', W/2, y0 + lato + 142);
   }
 
-  document.getElementById('sv-crea').onclick = async () => {
+  // azione: 'crea' (crea o ritrova il sondaggio del salone) | 'rinomina' (aggiorna il nome in un sondaggio gia' creato)
+  async function eseguiSondaggio(azione){
     const st = 'st-sondaggio', s = datiSalone();
     document.getElementById('sv-risultato').style.display = 'none';
     if (!CODICE_RE.test(s.CODICE)) { setStatus(st, 'Inserisci in "Dati salone" un codice valido (lettere, numeri, - o _; massimo 20 caratteri).', true); return; }
     if (!s.NOME_SALONE) { setStatus(st, 'Inserisci in "Dati salone" il nome del salone.', true); return; }
     if (!/^https?:\/\//i.test(urlInput.value.trim())) { setStatus(st, 'L\'indirizzo della pagina del sondaggio deve iniziare con https://', true); return; }
     if (!ENDPOINT_URL) { setStatus(st, 'Servizio di salvataggio non configurato (ENDPOINT_URL).', true); return; }
-    setStatus(st, 'Creazione del sondaggio in corso…');
+    setStatus(st, azione === 'crea' ? 'Creazione del sondaggio in corso…' : 'Aggiornamento del nome in corso…');
     try {
       const res = await fetch(ENDPOINT_URL, {
         method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ data: { modulo: 'sondaggio_clienti', azione: 'crea', CODICE: s.CODICE, NOME_SALONE: s.NOME_SALONE } })
+        body: JSON.stringify({ data: { modulo: 'sondaggio_clienti', azione, CODICE: s.CODICE, NOME_SALONE: s.NOME_SALONE } })
       });
       let resp = null; try { resp = await res.json(); } catch (e) {}
       if (!res.ok || !resp || resp.ok !== true) throw new Error((resp && resp.error) || ('HTTP ' + res.status));
@@ -749,13 +751,17 @@ document.querySelector('[data-save="sogno"]').onclick = async () => {
       await disegnaQr(link, nomeSalone);
       document.getElementById('sv-link').value = link;
       document.getElementById('sv-risultato').style.display = '';
-      setStatus(st, resp.esistente
-        ? `Il sondaggio per "${nomeSalone}" esiste già: ${resp.risposte} ${resp.risposte === 1 ? 'risposta raccolta' : 'risposte raccolte'}. QR generato.`
-        : `Sondaggio creato con successo per "${nomeSalone}". QR generato.`);
+      const nRisp = `${resp.risposte} ${resp.risposte === 1 ? 'risposta raccolta' : 'risposte raccolte'}`;
+      if (azione === 'rinomina') setStatus(st, `Nome aggiornato: "${nomeSalone}" (${nRisp}). QR rigenerato con il nuovo nome.`);
+      else if (!resp.esistente) setStatus(st, `Sondaggio creato con successo per "${nomeSalone}". QR generato.`);
+      else if (nomeSalone !== s.NOME_SALONE) setStatus(st, `Il sondaggio esiste già con il nome "${nomeSalone}" (${nRisp}), diverso da "${s.NOME_SALONE}". Per cambiarlo usa "Aggiorna nome del sondaggio". QR generato con il nome attuale.`);
+      else setStatus(st, `Il sondaggio per "${nomeSalone}" esiste già: ${nRisp}. QR generato.`);
     } catch (e) {
-      setStatus(st, `Creazione non riuscita: ${e.message || e}. Riprova.`, true);
+      setStatus(st, `${azione === 'crea' ? 'Creazione' : 'Aggiornamento'} non riuscito: ${e.message || e}. Riprova.`, true);
     }
-  };
+  }
+  document.getElementById('sv-crea').onclick = () => eseguiSondaggio('crea');
+  document.getElementById('sv-rinomina').onclick = () => eseguiSondaggio('rinomina');
   document.getElementById('sv-scarica').onclick = () => {
     // pagina A4 (300 dpi) con 4 QR identici da ritagliare: 2 x 2 formati A6, separati da linee tratteggiate di taglio
     const src = document.getElementById('sv-canvas');

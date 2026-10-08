@@ -350,7 +350,7 @@ function disegnaElenco(){
     const sv = sondaggi[s.code];
     const svCella = !sondaggiNoti ? '<span class="no" title="Aggiorna lo script Google: non invia ancora i dati dei sondaggi">n.d.</span>'
       : sv ? `<span class="ok" title="Sondaggio creato · ${sv.risposte || 0} ${sv.risposte === 1 ? 'risposta completata' : 'risposte completate'}">✓ ${sv.risposte || 0}</span>`
-      : '<span class="no" title="Sondaggio non creato">—</span>';
+      : `<span class="no" title="Sondaggio non creato">—</span> <button class="ghost" data-crea="${esc(s.code)}" title="Crea il sondaggio per questo salone" style="padding:2px 10px;font-size:.76rem;margin-left:6px">Crea</button>`;
     const nc = s.mods.c ? (s.mods.c.orig.collaboratori || []).length : 0;
     return `<tr data-code="${esc(s.code)}"><td><b>${esc(s.code)}</b></td>
       <td>${esc(m.nome)}<span class="tag ${n >= 3 ? 'done' : 'part'}">${n >= 3 ? 'Completo' : n + '/3'}</span></td>
@@ -359,6 +359,24 @@ function disegnaElenco(){
       <td>${esc(fmtData(ultimo(s)))}</td></tr>`;
   }).join('') : '<tr><td colspan="9" class="empty">Nessun salone trovato.</td></tr>';
   document.querySelectorAll('#rows tr[data-code]').forEach(tr => tr.onclick = () => apri(tr.dataset.code));
+  document.querySelectorAll('#rows button[data-crea]').forEach(b => b.onclick = ev => { ev.stopPropagation(); creaSondaggio(b); });
+}
+
+// crea il sondaggio "Che cosa pensi di noi" di un salone gia' presente nell'elenco
+async function creaSondaggio(btn){
+  const s = saloni.find(x => x.code === btn.dataset.crea); if (!s) return;
+  let nome = meta(s).nome;
+  if (!nome){ nome = (prompt(`Il salone ${s.code} non ha un nome registrato. Scrivi il nome da usare nel sondaggio:`) || '').trim(); if (!nome) return; }
+  if (!confirm(`Creare il sondaggio per "${nome}" (codice ${s.code})?`)) return;
+  btn.disabled = true; setStatus('st-list', 'Creazione del sondaggio in corso…');
+  try {
+    const r = await api('admin_sondaggio', { CODICE: s.code, NOME_SALONE: nome });
+    sondaggi[s.code] = { codice: s.code, nome: r.nome || nome, risposte: r.risposte || 0 };
+    const u = new URL('magis-plus-sondaggio.html', location.href); u.searchParams.set('c', s.code); u.searchParams.set('n', r.nome || nome);
+    let copiato = false; try { await navigator.clipboard.writeText(u.href); copiato = true; } catch(e){}
+    disegnaElenco();
+    setStatus('st-list', `Sondaggio ${r.esistente ? 'già presente' : 'creato'} per "${r.nome || nome}"${copiato ? ' — link copiato negli appunti' : ''}. Per il QR da stampare apri la pagina dei moduli, scheda "Sondaggio clienti".`);
+  } catch(e){ btn.disabled = false; setStatus('st-list', 'Creazione non riuscita: ' + (e.message || e), true); }
 }
 
 // ---------------------------------------------------------------- dettaglio

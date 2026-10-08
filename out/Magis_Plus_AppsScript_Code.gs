@@ -331,6 +331,21 @@ function gestisciSondaggio_(inc) {
       return { ok: true };
     }
 
+    if (inc.azione === "rinomina") {
+      // cambia il nome del salone nel sondaggio gia' creato (titolo del QR e della pagina); il codice e le risposte restano
+      if (!file) return { ok: false, error: "Sondaggio non ancora creato per questo salone" };
+      const nome = String(inc.NOME_SALONE || "").trim().slice(0, 80);
+      if (!nome) return { ok: false, error: "Nome salone mancante" };
+      const d = leggiJson_(file);
+      if (d.NOME_SALONE !== nome) {
+        d.nomi_precedenti = (d.nomi_precedenti || []).concat([{ nome: d.NOME_SALONE || "", fino_al: new Date().toISOString() }]).slice(-20);
+        d.NOME_SALONE = nome;
+        file.setContent(JSON.stringify(d, null, 2));
+        file.setName(sanitizeFilename(SONDAGGIO_PREFIX + " - " + nome + " (" + codice + ").json"));
+      }
+      return { ok: true, nome: nome, risposte: (d.risposte || []).length, fileUrl: file.getUrl() };
+    }
+
     return { ok: false, error: "Azione non riconosciuta" };
   } finally {
     lock.releaseLock();
@@ -353,6 +368,8 @@ function gestisciAdmin(p) {
   }
   if (p.action === "admin_list") return elencaModuli();
   if (p.action === "admin_save") return salvaModulo(p);
+  // crea il sondaggio di un salone dalla pagina riepilogo (se esiste gia' lo riconosce e non lo duplica)
+  if (p.action === "admin_sondaggio") return gestisciSondaggio_({ azione: "crea", CODICE: p.CODICE, NOME_SALONE: p.NOME_SALONE });
   return { ok: false, error: "Azione sconosciuta" };
 }
 
