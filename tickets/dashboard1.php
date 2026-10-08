@@ -44,13 +44,15 @@ $magis_url     = '/progetti/magis-plus-riepilogo-saloni.html?from=dashboard1';
         <style>
             /* palette e stile da mymonacelliitaly.com/professional: nero, azzurro acciaio, grigio chiaro; Cormorant + Lato */
             :root {
-                --black: #010101; --steel: #7692a9; --page: #e1e4e9; --white: #fff;
+                --black: #010101; --steel: #7692a9; --page: #e0f1fb; --band: #e0f1fb; --white: #fff;
                 --muted: #4a5a69; --focus: #1e73be;
             }
             body { background: var(--page); margin: 0; font-family: 'Lato', sans-serif; }
-            header.top { background: var(--black); padding: 22px 16px; text-align: center; }
-            h1.titolo { margin: 0; color: var(--white); font-family: 'Cormorant', serif; font-weight: 600;
-                font-size: 1.6rem; letter-spacing: .28em; text-transform: uppercase; }
+            /* barra titolo a tutta pagina con trama a linee, come sul sito */
+            header.top { background: var(--band) url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1901 221%22 preserveAspectRatio=%22xMidYMid slice%22%3E%3Cg fill=%22none%22 stroke=%22%237c97ac%22 stroke-width=%221.5%22%3E%3Cpath d=%22M0 60L50 0%22/%3E%3Cpath d=%22M50 0L110 221%22/%3E%3Cpath d=%22M50 0L235 142%22/%3E%3Cpath d=%22M235 142L448 0%22/%3E%3Cpath d=%22M235 142L190 221%22/%3E%3Cpath d=%22M235 142L305 221%22/%3E%3Cpath d=%22M448 0L410 221%22/%3E%3Cpath d=%22M448 0L478 147%22/%3E%3Cpath d=%22M478 147L540 0%22/%3E%3Cpath d=%22M478 147L436 221%22/%3E%3Cpath d=%22M478 147L570 221%22/%3E%3Cpath d=%22M540 0L645 221%22/%3E%3Cpath d=%22M540 0L695 112%22/%3E%3Cpath d=%22M700 0L693 221%22/%3E%3Cpath d=%22M695 112L865 0%22/%3E%3Cpath d=%22M695 112L838 221%22/%3E%3Cpath d=%22M865 0L935 221%22/%3E%3Cpath d=%22M865 0L1067 162%22/%3E%3Cpath d=%22M1067 162L1127 0%22/%3E%3Cpath d=%22M1067 162L1020 221%22/%3E%3Cpath d=%22M1067 162L1165 221%22/%3E%3Cpath d=%22M1127 0L1267 221%22/%3E%3Cpath d=%22M1127 0L1442 90%22/%3E%3Cpath d=%22M1442 90L1588 0%22/%3E%3Cpath d=%22M1442 90L1375 221%22/%3E%3Cpath d=%22M1442 90L1575 221%22/%3E%3Cpath d=%22M1588 0L1640 221%22/%3E%3Cpath d=%22M1588 0L1772 138%22/%3E%3Cpath d=%22M1772 138L1722 221%22/%3E%3Cpath d=%22M1772 138L1830 221%22/%3E%3Cpath d=%22M1772 138L1901 60%22/%3E%3C/g%3E%3C/svg%3E") center / cover no-repeat;
+                min-height: 130px; display: flex; align-items: center; padding: 24px 16px 24px max(16px, 15.8vw); }
+            h1.titolo { margin: 0; color: var(--black); font-family: 'Lato', sans-serif; font-weight: 400;
+                font-size: clamp(1.5rem, 3vw, 2.3rem); letter-spacing: .03em; text-transform: uppercase; }
             .wrap { width: min(100% - 32px, 420px); margin: 0 auto; padding: 28px 0 48px; }
             .menu { display: flex; flex-direction: column; gap: 12px; }
             .menu a.btn {
@@ -78,7 +80,7 @@ $magis_url     = '/progetti/magis-plus-riepilogo-saloni.html?from=dashboard1';
         </style>
     </head>
     <body>
-        <header class="top"><h1 class="titolo">Dashboard</h1></header>
+        <header class="top"><h1 class="titolo">My Dashboard</h1></header>
         <main class="wrap">
         <nav class="menu" aria-label="Sezioni della dashboard">
             <a class="btn" href="<?= htmlspecialchars($cruscotti_url, ENT_QUOTES, 'UTF-8') ?>">
