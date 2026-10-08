@@ -373,7 +373,7 @@ nav.top .navend{margin-left:auto}
 </section>
 </div>
 
-<!-- ================= SONDAGGIO CLIENTI (per i clienti storici; per i nuovi solo con ?master) ================= -->
+<!-- ================= SONDAGGIO CLIENTI (per clienti nuovi e storici) ================= -->
 <div class="panel" id="p-sondaggio">
 <section class="card">
   <h2>Sondaggio <b>clienti</b></h2>
@@ -631,13 +631,11 @@ document.querySelector('[data-save="salone"]').onclick = async () => {
 // PAGINA INIZIALE: l'HM2I sceglie "cliente nuovo" o "cliente storico"
 // ============================================================
 let MODE = null;                                                  // 'nuovo' | 'storico'
-const MASTER = new URLSearchParams(location.search).has('master');
 
 function applyMode(){
   document.getElementById('topnav').style.display = '';
   document.querySelectorAll('[data-modes]').forEach(el => {
     let ok = el.dataset.modes.split(' ').includes(MODE);
-    if (el.id === 'nav-sondaggio' && MODE === 'nuovo' && !MASTER) ok = false;   // per i nuovi resta nascosto (solo ?master)
     el.style.display = ok ? '' : 'none';
   });
   document.getElementById('ds-sub').textContent = MODE === 'storico'
@@ -693,7 +691,7 @@ document.querySelector('[data-save="sogno"]').onclick = async () => {
   await saveData(Object.assign({ modulo: 'sogno_salone' }, { sogni }), 'st-sogno');
 };
 
-// ---- Sondaggio clienti: attivazione e QR (clienti storici; per i nuovi solo aprendo la pagina con ?master) ----
+// ---- Sondaggio clienti: attivazione e QR (clienti nuovi e storici) ----
 (function(){
   const urlInput = document.getElementById('sv-url');
   urlInput.value = new URL('magis-plus-sondaggio.html', location.href).href;
