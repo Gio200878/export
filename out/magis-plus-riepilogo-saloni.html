@@ -18,6 +18,7 @@
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased}
 h1,h2,h3{font-family:var(--display);font-weight:500;margin:0;letter-spacing:.01em}
 .wrap{max-width:1100px;margin:0 auto;padding:0 20px 110px}
+a{color:var(--gold)}
 body.wide .wrap{max-width:none}   /* elenco saloni: tabella a tutta larghezza */
 [hidden]{display:none!important}
 
@@ -147,7 +148,7 @@ tbody tr:last-child td{border-bottom:0}
     <table>
       <thead><tr>
         <th data-s="code">Codice</th><th data-s="nome">Salone</th><th data-s="titolare">Titolare</th><th data-s="hm2i">HM2I</th>
-        <th data-s="g">Gestione e tariffe</th><th data-s="c">Collaboratori</th><th data-s="s">Immagine e sogno</th><th data-s="sv">Sondaggio</th><th data-s="upd">Ultimo aggiornamento</th>
+        <th data-s="g">Gestione e tariffe</th><th data-s="c">Collaboratori</th><th data-s="s">Immagine e sogno</th><th data-s="sv">Sondaggio</th><th data-s="upd">Ultimo aggiornamento</th><th data-s="mp">Magis Plus</th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
@@ -266,6 +267,9 @@ async function api(action, extra){
 
 // ---------------------------------------------------------------- stato
 let sondaggi = {};        // codice salone -> { risposte, creato_il, nome } (dal servizio Google)
+let magisPlus = {};       // codice salone -> { file, aggiornato }: PDF Magis Plus pubblicati con pubblica_magis_plus.bat
+let magisPlusNoto = false; // false se il servizio Google non e' ancora aggiornato
+const MAGIS_PLUS_DIR = 'magis-plus/';   // cartella sul sito accanto a questa pagina
 let sondaggiNoti = false; // false se il servizio Google non e' ancora aggiornato e non invia i sondaggi
 let saloni = [];          // [{code, mods:{g,c,s -> {fileId,name,updated,orig,work}}}]
 let cur = null;           // salone aperto
@@ -332,6 +336,8 @@ async function caricaElenco(){
   sondaggiNoti = Array.isArray(r.sondaggi);
   sondaggi = {};
   (r.sondaggi || []).forEach(x => { sondaggi[x.codice] = x; });
+  magisPlusNoto = !!r.magis_plus && typeof r.magis_plus === 'object';
+  magisPlus = magisPlusNoto ? r.magis_plus : {};
   disegnaElenco();
 }
 $('btn-agg').onclick = async () => {
@@ -352,7 +358,7 @@ function disegnaElenco(){
     return !q || [s.code, m.nome, m.titolare, m.hm2i].join(' ').toLowerCase().includes(q);
   });
   const val = ({s, m}) => ({ code: s.code, nome: m.nome, titolare: m.titolare, hm2i: m.hm2i, upd: ultimo(s),
-    sv: sondaggi[s.code] ? 1 + (sondaggi[s.code].risposte || 0) : 0, g: s.mods.g ? 1 : 0, c: s.mods.c ? (s.mods.c.orig.collaboratori||[]).length : 0, s: s.mods.s ? 1 : 0 }[sortKey]);
+    mp: magisPlus[s.code] ? (magisPlus[s.code].aggiornato || '1') : '', sv: sondaggi[s.code] ? 1 + (sondaggi[s.code].risposte || 0) : 0, g: s.mods.g ? 1 : 0, c: s.mods.c ? (s.mods.c.orig.collaboratori||[]).length : 0, s: s.mods.s ? 1 : 0 }[sortKey]);
   righe.sort((a, b) => {
     const x = val(a), y = val(b);
     return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'it', { numeric: true })) * sortDir;
@@ -365,13 +371,17 @@ function disegnaElenco(){
     const svCella = !sondaggiNoti ? '<span class="no" title="Aggiorna lo script Google: non invia ancora i dati dei sondaggi">n.d.</span>'
       : sv ? `<span class="ok" title="Sondaggio creato · ${sv.risposte || 0} ${sv.risposte === 1 ? 'risposta completata' : 'risposte completate'}">✓ ${sv.risposte || 0}</span>`
       : `<span class="no" title="Sondaggio non creato">—</span> <button class="ghost" data-crea="${esc(s.code)}" title="Crea il sondaggio per questo salone" style="padding:2px 10px;font-size:.76rem;margin-left:6px">Crea</button>`;
+    const mp = magisPlus[s.code];
+    const mpCella = !magisPlusNoto ? '<span class="no" title="Aggiorna lo script Google: non invia ancora i Magis Plus pubblicati">n.d.</span>'
+      : mp ? `<a href="${esc(new URL(MAGIS_PLUS_DIR + mp.file, location.href).href)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Magis Plus${mp.aggiornato ? ' del ' + esc(fmtData(mp.aggiornato)) : ''}">Apri PDF ↗</a>`
+      : '<span class="no" title="Magis Plus non ancora pubblicato">—</span>';
     const nc = s.mods.c ? (s.mods.c.orig.collaboratori || []).length : 0;
     return `<tr data-code="${esc(s.code)}"><td><b>${esc(s.code)}</b></td>
       <td>${esc(m.nome)}<span class="tag ${n >= 3 ? 'done' : 'part'}">${n >= 3 ? 'Completo' : n + '/3'}</span></td>
       <td>${esc(m.titolare)}</td><td>${esc(m.hm2i)}</td>
       <td>${ok('g')}</td><td>${ok('c', nc + (nc === 1 ? ' collaboratore' : ' collaboratori'))}</td><td>${ok('s')}</td><td>${svCella}</td>
-      <td>${esc(fmtData(ultimo(s)))}</td></tr>`;
-  }).join('') : '<tr><td colspan="9" class="empty">Nessun salone trovato.</td></tr>';
+      <td>${esc(fmtData(ultimo(s)))}</td><td>${mpCella}</td></tr>`;
+  }).join('') : '<tr><td colspan="10" class="empty">Nessun salone trovato.</td></tr>';
   document.querySelectorAll('#rows tr[data-code]').forEach(tr => tr.onclick = () => apri(tr.dataset.code));
   document.querySelectorAll('#rows button[data-crea]').forEach(b => b.onclick = ev => { ev.stopPropagation(); creaSondaggio(b); });
 }

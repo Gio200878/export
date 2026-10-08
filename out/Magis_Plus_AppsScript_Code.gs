@@ -59,6 +59,11 @@ const COMPLETION_EMAIL = "info@monacelliitaly.it;l.dessi@monacelliitaly.it";
 const SONDAGGIO_PREFIX = "Magis Plus Sondaggio Clienti";
 const CODICE_VALIDO_ = /^[A-Za-z0-9_-]{1,20}$/;
 
+// Magis Plus (PDF) pubblicati sul sito da pubblica_magis_plus.bat: un file con l'elenco { codice: { file, aggiornato } }.
+// L'elenco lo legge solo la pagina riepilogo (con password): i nomi dei PDF contengono un codice casuale e non vanno resi pubblici.
+const MAGISPLUS_FILE = "Magis Plus Pubblicati.json";
+const MAGISPLUS_FILE_RE_ = /^magis_plus_[A-Za-z0-9-]{1,20}_[0-9a-f]{8}\.pdf$/;
+
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) {
@@ -368,14 +373,42 @@ function gestisciAdmin(p) {
   }
   if (p.action === "admin_list") return elencaModuli();
   if (p.action === "admin_save") return salvaModulo(p);
+  if (p.action === "admin_magisplus") return registraMagisPlus_(p);
   // crea il sondaggio di un salone dalla pagina riepilogo (se esiste gia' lo riconosce e non lo duplica)
   if (p.action === "admin_sondaggio") return gestisciSondaggio_({ azione: "crea", CODICE: p.CODICE, NOME_SALONE: p.NOME_SALONE });
   return { ok: false, error: "Azione sconosciuta" };
 }
 
+/** Registra i Magis Plus pubblicati (chiamata da pubblica_magis_plus.bat, con la password della pagina riepilogo). */
+function registraMagisPlus_(p) {
+  const voci = p.voci;
+  if (!Array.isArray(voci) || voci.length > 2000) return { ok: false, error: "Elenco non valido" };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const folder = cartella_();
+    const it = folder.getFilesByName(MAGISPLUS_FILE);
+    const file = it.hasNext() ? it.next() : null;
+    const attuale = file ? leggiJson_(file) : {};
+    const out = (attuale && attuale.voci) || {};
+    let n = 0;
+    voci.forEach(function (v) {
+      if (!v || !CODICE_VALIDO_.test(String(v.codice || "")) || !MAGISPLUS_FILE_RE_.test(String(v.file || ""))) return;
+      out[String(v.codice)] = { file: String(v.file), aggiornato: String(v.aggiornato || "").slice(0, 40) };
+      n++;
+    });
+    const testo = JSON.stringify({ aggiornato: new Date().toISOString(), voci: out }, null, 2);
+    if (file) file.setContent(testo); else folder.createFile(MAGISPLUS_FILE, testo, MimeType.PLAIN_TEXT);
+    return { ok: true, registrati: n };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /** Per ogni salone e modulo restituisce il file piu' recente (i salvataggi ripetuti creano piu' file). */
 function elencaModuli() {
   const piuRecenti = {};
+  let magisPlus = {};    // codice -> { file, aggiornato } dei Magis Plus pubblicati sul sito
   const sondaggi = {};   // un sondaggio per salone: { codice, nome, creato_il, risposte (numero di questionari inviati) }
   const it = cartella_().getFiles();
   while (it.hasNext()) {
@@ -383,6 +416,7 @@ function elencaModuli() {
     if (file.getSize() > 2000000) continue;
     let d;
     try { d = JSON.parse(file.getBlob().getDataAsString()); } catch (err) { continue; }
+    if (file.getName() === MAGISPLUS_FILE) { magisPlus = (d && d.voci) || {}; continue; }
     if (d && d.CODICE && file.getName().indexOf(SONDAGGIO_PREFIX) === 0) {
       const t0 = file.getLastUpdated().getTime();
       if (!sondaggi[d.CODICE] || t0 > sondaggi[d.CODICE].t) {
@@ -400,7 +434,8 @@ function elencaModuli() {
     }
   }
   return { ok: true, items: Object.keys(piuRecenti).map(function (k) { return piuRecenti[k]; }),
-           sondaggi: Object.keys(sondaggi).map(function (k) { const x = sondaggi[k]; delete x.t; return x; }) };
+           sondaggi: Object.keys(sondaggi).map(function (k) { const x = sondaggi[k]; delete x.t; return x; }),
+           magis_plus: magisPlus };
 }
 
 /** Sovrascrive il contenuto di un file gia' esistente (Drive tiene lo storico delle versioni). */
