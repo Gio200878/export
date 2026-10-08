@@ -28,3 +28,9 @@ dist-ssr
 !.dev.vars.example
 .env*
 !.env.example
+
+# report tickets generati (dati personali, non versionare)
+tickets/out
+tickets/*.log
+tickets/TABELLA_DECODIFICA*
+tickets/tickets_latest.csv
