@@ -39,45 +39,47 @@ $magis_url     = '/progetti/magis-plus-riepilogo-saloni.html?from=dashboard1';
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>DASHBOARD</title>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant:wght@500;600&family=Lato:wght@400;700&display=swap">
         <link rel="stylesheet" href="/css/style.css">
         <style>
+            /* palette e stile da mymonacelliitaly.com/professional: nero, azzurro acciaio, grigio chiaro; Cormorant + Lato */
             :root {
-                --card: #1c1c1e; --card-hover: #2a2a2d; --card-border: #3a3a3e;
-                --ink: #fff; --muted: #b8b8bd; --accent: #d2a85a;
+                --black: #010101; --steel: #7692a9; --page: #e1e4e9; --white: #fff;
+                --muted: #4a5a69; --focus: #1e73be;
             }
-            .wrap { width: min(100% - 32px, 380px); margin: 0 auto; padding: 24px 0 40px; }
-            h1.titolo { color: #fff; text-align: center; font-family: 'Open Sans', sans-serif;
-                font-size: 1.25rem; letter-spacing: .12em; margin: 0 0 20px; }
+            body { background: var(--page); margin: 0; font-family: 'Lato', sans-serif; }
+            header.top { background: var(--black); padding: 22px 16px; text-align: center; }
+            h1.titolo { margin: 0; color: var(--white); font-family: 'Cormorant', serif; font-weight: 600;
+                font-size: 1.6rem; letter-spacing: .28em; text-transform: uppercase; }
+            .wrap { width: min(100% - 32px, 420px); margin: 0 auto; padding: 28px 0 48px; }
             .menu { display: flex; flex-direction: column; gap: 12px; }
             .menu a.btn {
-                display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 12px 16px;
-                text-decoration: none; font-family: 'Open Sans', sans-serif; color: var(--ink);
-                background: var(--card); border: 1px solid var(--card-border); border-radius: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,.25);
-                transition: background-color .2s ease, border-color .2s ease, transform .2s ease;
+                display: flex; align-items: center; gap: 16px; min-height: 68px; padding: 12px 16px;
+                text-decoration: none; color: var(--black); background: var(--white);
+                border: 1px solid #c9d0d8; border-left: 4px solid var(--steel); border-radius: 2px;
+                transition: background-color .2s ease, color .2s ease, border-color .2s ease;
             }
-            .menu a.btn:hover { background: var(--card-hover); border-color: var(--accent); transform: translateY(-1px); }
-            .menu a.btn:active { transform: none; }
-            .menu a.btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+            .menu a.btn:hover { background: var(--black); color: var(--white); border-color: var(--black); }
+            .menu a.btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
             .btn .ico { flex: none; width: 40px; height: 40px; display: grid; place-items: center;
-                border-radius: 10px; background: rgba(210,168,90,.14); color: var(--accent); }
+                background: var(--steel); color: var(--white); }
             .btn .ico svg { width: 22px; height: 22px; }
             .btn .txt { display: flex; flex-direction: column; min-width: 0; }
-            .btn .lbl { font-weight: 700; font-size: .95rem; letter-spacing: .04em; }
-            .btn .sub { font-size: .8rem; color: var(--muted); margin-top: 2px; }
-            .btn .go { margin-left: auto; width: 18px; height: 18px; color: var(--muted); flex: none; }
-            .menu a.btn.disabled { opacity: .55; pointer-events: none; cursor: not-allowed; }
+            .btn .lbl { font-weight: 700; font-size: .9rem; letter-spacing: .08em; text-transform: uppercase; }
+            .btn .sub { font-family: 'Cormorant', serif; font-weight: 500; font-size: 1.05rem; color: var(--muted); margin-top: 1px; }
+            .menu a.btn:hover .sub, .menu a.btn:hover .go { color: #d7dde3; }
+            .btn .go { margin-left: auto; width: 18px; height: 18px; color: var(--steel); flex: none; }
+            .menu a.btn.disabled { background: #eef0f3; color: #5f6b77; border-color: #d3d8de; border-left-color: #b4bfca;
+                pointer-events: none; cursor: not-allowed; }
+            .menu a.btn.disabled .ico { background: #b4bfca; }
+            .menu a.btn.disabled .sub { color: #5f6b77; }
             .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-            @media (prefers-reduced-motion: reduce) {
-                .menu a.btn { transition: none; }
-                .menu a.btn:hover { transform: none; }
-            }
+            @media (prefers-reduced-motion: reduce) { .menu a.btn { transition: none; } }
         </style>
     </head>
     <body>
+        <header class="top"><h1 class="titolo">Dashboard</h1></header>
         <main class="wrap">
-        <h1 class="titolo">DASHBOARD</h1>
         <nav class="menu" aria-label="Sezioni della dashboard">
             <a class="btn" href="<?= htmlspecialchars($cruscotti_url, ENT_QUOTES, 'UTF-8') ?>">
                 <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
