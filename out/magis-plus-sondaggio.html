@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Che cosa pensi di noi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@300;700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#141A48;--bg2:#222C6E;--surface:rgba(255,255,255,.07);--surface-2:rgba(255,255,255,.12);
+  --ink:#EEEDF8;--muted:#B3B7DA;--line:rgba(255,255,255,.18);--gold:#E8C766;--violet:#A08BFF;--bad:#FF8DA5;--good:#5FD39E;
+  --display:"Big Shoulders Display","Arial Narrow",sans-serif;--body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:var(--body);line-height:1.5;
+  background:linear-gradient(165deg,var(--bg1) 0%,#1B2360 55%,var(--bg2) 100%) fixed;-webkit-font-smoothing:antialiased}
+.wrap{max-width:640px;margin:0 auto;padding:0 16px calc(48px + env(safe-area-inset-bottom,0px))}
+header{padding:calc(28px + env(safe-area-inset-top,0px)) 0 8px}
+h1{font-family:var(--display);font-weight:300;font-size:clamp(2.6rem,12vw,3.6rem);line-height:.95;margin:8px 0 6px}
+h1 b{font-weight:800;color:var(--gold)}
+.salone{font-family:var(--display);font-weight:800;font-size:clamp(1.7rem,8vw,2.4rem);line-height:1.05;letter-spacing:.02em;color:#fff;margin:0}
+.intro{color:var(--muted);margin:0 0 6px;font-size:.98rem}
+.progress{position:sticky;top:0;z-index:5;margin:14px -16px 0;padding:10px 16px calc(8px);
+  background:rgba(15,19,48,.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.progress .bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.progress .bar i{display:block;height:100%;width:0;background:var(--gold);border-radius:99px;transition:width .25s}
+.progress small{display:block;margin-top:5px;font-size:.78rem;color:var(--muted)}
+
+fieldset.q{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:16px 14px 14px;margin:14px 0 0;min-width:0}
+fieldset.q legend{padding:0;float:left;width:100%;margin:0 0 12px;font-weight:600;font-size:1.04rem;line-height:1.35}
+fieldset.q legend .n{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 6px;border-radius:99px;background:var(--gold);color:#1A1440;font-size:.8rem;font-weight:700;margin-right:8px;vertical-align:1px}
+fieldset.q legend small{display:block;font-weight:400;color:var(--muted);font-size:.84rem;margin-top:3px}
+.opts{clear:both;display:grid;gap:8px}
+.opt,.cell{position:relative;display:block;scroll-margin-top:96px}
+fieldset.q{scroll-margin-top:84px}
+.opt input,.cell input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;inset:0}
+.opt span{display:flex;align-items:center;min-height:48px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:.98rem}
+.opt input:checked+span,.cell input:checked+span{background:var(--gold);border-color:var(--gold);color:#1A1440;font-weight:700}
+.opt input:focus-visible+span,.cell input:focus-visible+span{outline:3px solid var(--violet);outline-offset:2px}
+.row{clear:both;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0;padding-top:0}
+.row .rl{font-size:.95rem;margin-bottom:8px}
+.scale{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.yn{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cell span{display:grid;place-items:center;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:600}
+textarea{clear:both;width:100%;min-height:96px;resize:vertical;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+textarea:focus{outline:3px solid var(--violet);outline-offset:2px}
+.send{margin-top:22px}
+button.primary{width:100%;min-height:54px;font:inherit;font-weight:700;font-size:1.05rem;border:0;border-radius:14px;background:var(--gold);color:#1A1440;cursor:pointer}
+button.primary:disabled{opacity:.6;cursor:wait}
+button.ghost{font:inherit;font-weight:600;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:12px;padding:12px 18px;cursor:pointer}
+.msg{margin:12px 0 0;font-size:.95rem;min-height:1.3em}
+.msg.err{color:var(--bad)}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:22px 18px;margin-top:18px}
+.thanks h2{font-family:var(--display);font-weight:800;font-size:2.2rem;margin:0 0 6px;color:var(--gold)}
+.thanks p{margin:0 0 14px;color:var(--ink)}
+.priv{margin-top:18px;font-size:.8rem;color:var(--muted)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="salone" id="salone" hidden></p>
+  <h1>Che cosa <b>pensi di noi</b></h1>
+  <p class="intro">Rispondi spontaneamente a tutte le domande: è il modo più semplice per darti il meglio. Grazie per la collaborazione.</p>
+</header>
+
+<div id="stato" class="card" hidden></div>
+
+<form id="form" novalidate hidden>
+  <div class="progress" aria-live="polite">
+    <div class="bar"><i id="pbar"></i></div>
+    <small id="ptxt">0 di 18 domande</small>
+  </div>
+  <div id="domande"></div>
+  <div class="send">
+    <button type="submit" class="primary" id="invia">Invia le risposte</button>
+    <p class="msg" id="msg" role="status"></p>
+  </div>
+  <p class="priv">Il sondaggio è anonimo: non vengono raccolti nome, indirizzo e-mail o altri dati personali, a meno che tu non li scriva volontariamente nei campi di testo.</p>
+</form>
+
+<div id="grazie" class="card thanks" hidden>
+  <h2>Grazie!</h2>
+  <p>Le tue risposte sono state inviate. Il tuo parere ci aiuta a migliorare.</p>
+  <button class="ghost" id="ancora" type="button">Compila di nuovo</button>
+</div>
+</div>
+
+<script>
+// Indirizzo del servizio (Google Apps Script) che salva le risposte su Drive.
+const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwI2Thi9vz-oUKLafmxXGvImS_cvQO3_t9eh5_F1cf0RO75BrGy8yldS5YxO7yl8blw/exec";
+
+const SINO = [['SI','Sì'],['NO','No']];
+const DOMANDE = [
+  {id:'q01_conosciuto_tramite', t:'single', titolo:'Chi ti ha parlato di noi?', opts:['Pubblicità','Social network','Passaparola','Sito internet','Altro']},
+  {id:'q02_frequenti_da', t:'single', titolo:'Frequenti il salone da:', opts:['Da meno di un mese','Da meno di un anno','Da più di un anno','Da più di cinque anni']},
+  {id:'q03_frequenza_servizi', t:'single', titolo:'Usufruisci dei nostri servizi:', opts:['Ogni settimana','Ogni 2/3 settimane','Ogni 4/6 settimane','Ogni 3/6 mesi','Solo per grandi occasioni']},
+  {id:'q04_perche_frequenti', t:'single', titolo:'Perché frequenti il nostro salone?', opts:['Mi soddisfa nei servizi','Mi trovo a mio agio','Non è caro','Ho seguito il mio parrucchiere','Trovo molta professionalità','Vengo sempre accolta/o con un sorriso','Effettua ogni volta una consulenza personalizzata','Offre sempre riviste aggiornate']},
+  {id:'q05_titolare', t:'single', titolo:'Il titolare di questo salone è:', opts:['Professionale','Premuroso','Simpatico','Innovativo','Presuntuoso','Antipatico']},
+  {id:'q06_personale', t:'single', titolo:'Il personale di questo salone è:', opts:['Professionale','Premuroso','Simpatico','Innovativo','Presuntuoso','Antipatico']},
+  {id:'q07_salone', t:'single', titolo:'Trovi che questo salone sia:', opts:['Pulito','Ordinato','Accogliente','Confortevole','Disordinato','Da rimodernare']},
+  {id:'q08_servizi', t:'rating', titolo:'Come valuti i nostri servizi?', hint:'Dai un punteggio da 5 a 10', righe:['Detergenze','Piega','Taglio','Colore','Meches','Ricostruzione','Trattamenti']},
+  {id:'q09_valutazioni', t:'rating', titolo:'Dai una valutazione a:', hint:'Dai un punteggio da 5 a 10', righe:['Puntualità','Accoglienza','Consulenza','Velocità servizi','Promozioni','Rapporto qualità/prezzo']},
+  {id:'q10_comunicazione', t:'rating', titolo:'Come valuti la nostra comunicazione:', hint:'Dai un punteggio da 5 a 10', righe:['Vetrina','Insegna','Poster esterni','Espositori prodotti','Pubblicità esterna','Internet']},
+  {id:'q11_suggerimenti_comunicazione', t:'text', titolo:'Hai suggerimenti in merito alla nostra comunicazione?'},
+  {id:'q12_mantenimento_a_casa', t:'yesno', titolo:'Mantenimento a casa', righe:['Hai trovato beneficio sui prodotti acquistati in salone?','Il risultato dei servizi effettuati in salone è gestibile da casa?']},
+  {id:'q13_suggerimenti_mantenimento', t:'text', titolo:'Hai qualche suggerimento da darci in merito alla domanda sopra?'},
+  {id:'q14_esigenze', t:'yesno', titolo:'Per soddisfare le tue esigenze:', righe:['Vorrei avere una consulenza ancora più personalizzata?','Vorresti avere maggiori informazioni sullo stato di cute e capelli?','Vorresti essere consigliato sui prodotti da utilizzare a casa?','Vorresti che il nostro servizio appuntamento fosse più organizzato?']},
+  {id:'q15_soddisfazione_capelli', t:'single', titolo:'Quanto sei soddisfatta/o dei tuoi capelli?', opts:['Molto','Abbastanza','Poco','Per niente']},
+  {id:'q16_consiglieresti', t:'single', titolo:'Consiglieresti questo salone?', opts:SINO},
+  {id:'q17_compilato_da', t:'single', titolo:'La compilazione è effettuata da', opts:['Uomo','Donna','Non binario']},
+  {id:'q18_eta', t:'single', titolo:'Età', opts:['15-30','31-55','Oltre 55']},
+];
+
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const CODICE = (params.get('c') || '').trim();
+let NOME = (params.get('n') || '').trim().slice(0, 80);
+let rispostaId = newId();
+
+function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function val(o){ return Array.isArray(o) ? o[0] : o; }
+function lab(o){ return Array.isArray(o) ? o[1] : o; }
+
+// ---- costruzione del modulo ----
+function costruisci(){
+  $('domande').innerHTML = DOMANDE.map((d, i) => {
+    const titolo = `<legend><span class="n">${i+1}</span>${esc(d.titolo)}${d.hint ? `<small>${esc(d.hint)}</small>` : ''}</legend>`;
+    let corpo = '';
+    if (d.t === 'single') {
+      corpo = '<div class="opts">' + d.opts.map(o =>
+        `<label class="opt"><input type="radio" name="${d.id}" value="${esc(val(o))}"><span>${esc(lab(o))}</span></label>`).join('') + '</div>';
+    } else if (d.t === 'rating') {
+      corpo = d.righe.map(r => `<div class="row"><div class="rl">${esc(r)}</div><div class="scale" role="radiogroup" aria-label="${esc(r)}">` +
+        [5,6,7,8,9,10].map(n => `<label class="cell"><input type="radio" name="${d.id}__${esc(r)}" value="${n}"><span>${n}</span></label>`).join('') + '</div></div>').join('');
+    } else if (d.t === 'yesno') {
+      corpo = d.righe.map(r => `<div class="row"><div class="rl">${esc(r)}</div><div class="yn" role="radiogroup" aria-label="${esc(r)}">` +
+        SINO.map(o => `<label class="cell"><input type="radio" name="${d.id}__${esc(r)}" value="${o[0]}"><span>${o[1]}</span></label>`).join('') + '</div></div>').join('');
+    } else {
+      corpo = `<textarea name="${d.id}" maxlength="1000" aria-label="${esc(d.titolo)}"></textarea>`;
+    }
+    return `<fieldset class="q">${titolo}${corpo}</fieldset>`;
+  }).join('');
+}
+
+// ---- lettura risposte ----
+function leggi(){
+  const out = {};
+  const f = $('form');
+  DOMANDE.forEach(d => {
+    if (d.t === 'single') {
+      const c = f.querySelector(`input[name="${d.id}"]:checked`);
+      if (c) out[d.id] = c.value;
+    } else if (d.t === 'rating' || d.t === 'yesno') {
+      const o = {};
+      d.righe.forEach(r => {
+        const c = [...f.querySelectorAll('input:checked')].find(x => x.name === `${d.id}__${r}`);
+        if (c) o[r] = d.t === 'rating' ? Number(c.value) : c.value;
+      });
+      if (Object.keys(o).length) out[d.id] = o;
+    } else {
+      const v = f.querySelector(`textarea[name="${d.id}"]`).value.trim();
+      if (v) out[d.id] = v.slice(0, 1000);
+    }
+  });
+  return out;
+}
+function aggiornaProgresso(){
+  const n = Object.keys(leggi()).length;
+  $('pbar').style.width = (n / DOMANDE.length * 100) + '%';
+  $('ptxt').textContent = `${n} di ${DOMANDE.length} domande`;
+}
+
+// ---- invio ----
+async function invia(ev){
+  ev.preventDefault();
+  const risposta = leggi();
+  const msg = $('msg');
+  if (!Object.keys(risposta).length) { msg.textContent = 'Rispondi ad almeno una domanda prima di inviare.'; msg.className = 'msg err'; return; }
+  const btn = $('invia');
+  btn.disabled = true; btn.textContent = 'Invio in corso…'; msg.textContent = ''; msg.className = 'msg';
+  try {
+    const res = await fetch(ENDPOINT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // evita la richiesta di verifica preliminare (CORS)
+      body: JSON.stringify({ data: { modulo: 'sondaggio_clienti', azione: 'rispondi', CODICE, NOME_SALONE: NOME,
+                                       risposta: Object.assign({ id: rispostaId, inviata_il: new Date().toISOString() }, risposta) } })
+    });
+    let resp = null;
+    try { resp = await res.json(); } catch (e) { /* risposta non leggibile */ }
+    if (!res.ok || !resp || resp.ok !== true) throw new Error((resp && resp.error) || ('HTTP ' + res.status));
+    $('form').hidden = true; $('grazie').hidden = false; window.scrollTo({ top: 0 });
+  } catch (e) {
+    msg.textContent = 'Non sono riuscito a inviare le risposte (' + (e.message || e) + '). Controlla la connessione e riprova: le tue risposte sono ancora qui.';
+    msg.className = 'msg err';
+    btn.disabled = false; btn.textContent = 'Invia le risposte';
+  }
+}
+
+// ---- avvio ----
+function mostraErrore(t){ const s = $('stato'); s.hidden = false; s.innerHTML = '<strong>' + esc(t) + '</strong>'; }
+function mostraSalone(){ if (NOME) { $('salone').textContent = NOME; $('salone').hidden = false; document.title = 'Che cosa pensi di noi — ' + NOME; } }
+
+async function avvia(){
+  if (!/^[A-Za-z0-9_-]{1,20}$/.test(CODICE)) { mostraErrore('Link non valido. Inquadra di nuovo il QR code del salone.'); return; }
+  mostraSalone();
+  // Chiedo al servizio se il sondaggio è attivo e qual è il nome ufficiale del salone.
+  // Se la verifica non è raggiungibile (rete lenta), proseguo comunque: l'invio finale lo controlla di nuovo.
+  try {
+    const r = await fetch(ENDPOINT_URL + '?azione=info&codice=' + encodeURIComponent(CODICE));
+    const j = await r.json();
+    if (j && j.ok === false && /non attivo/i.test(j.error || '')) { mostraErrore('Questo sondaggio non è attivo.'); return; }
+    if (j && j.ok && j.nome) { NOME = j.nome; mostraSalone(); }
+  } catch (e) { /* si procede */ }
+  costruisci();
+  $('form').hidden = false;
+  $('form').addEventListener('change', aggiornaProgresso);
+  $('form').addEventListener('input', aggiornaProgresso);
+  $('form').addEventListener('submit', invia);
+  $('ancora').onclick = () => { $('form').reset(); rispostaId = newId(); aggiornaProgresso(); $('grazie').hidden = true; $('form').hidden = false;
+                                $('invia').disabled = false; $('invia').textContent = 'Invia le risposte'; $('msg').textContent = ''; window.scrollTo({ top: 0 }); };
+}
+avvia();
+</script>
+</body>
+</html>
