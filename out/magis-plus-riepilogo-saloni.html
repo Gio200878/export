@@ -239,7 +239,21 @@ function setStatus(id, msg, err){ const e = $(id); if (e){ e.textContent = msg |
 function store(k, v){ try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch(e){} }
 function load(k){ try { return sessionStorage.getItem(k); } catch(e){ return null; } }
 
-let KEY = load('mp_key') || '';
+// La password resta salvata in questo browser per 12 ore dall'accesso (anche dopo aver chiuso la pagina); "Esci" la cancella subito.
+const DURATA_ACCESSO = 12 * 60 * 60 * 1000;
+function leggiChiave(){
+  try {
+    const o = JSON.parse(localStorage.getItem('mp_key') || 'null');
+    if (o && o.k && o.exp > Date.now()) return o.k;
+    localStorage.removeItem('mp_key');
+  } catch(e){}
+  return load('mp_key') || '';
+}
+function salvaChiave(k){
+  try { k ? localStorage.setItem('mp_key', JSON.stringify({ k, exp: Date.now() + DURATA_ACCESSO })) : localStorage.removeItem('mp_key'); } catch(e){}
+  store('mp_key', k || null);
+}
+let KEY = leggiChiave();
 async function api(action, extra){
   // text/plain: richiesta "semplice", senza preflight CORS (Apps Script non lo gestisce)
   const res = await fetch(ENDPOINT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -298,10 +312,10 @@ $('f-login').onsubmit = async e => {
   e.preventDefault();
   KEY = $('pw').value;
   setStatus('st-login', 'Verifica in corso…');
-  try { await caricaElenco(); store('mp_key', KEY); setStatus('st-login', ''); mostra('list'); }
-  catch(err){ KEY = ''; store('mp_key', null); setStatus('st-login', err.message || String(err), true); }
+  try { await caricaElenco(); salvaChiave(KEY); setStatus('st-login', ''); mostra('list'); }
+  catch(err){ KEY = ''; salvaChiave(''); setStatus('st-login', err.message || String(err), true); }
 };
-$('btn-esci').onclick = () => { if (!confermaEsci()) return; KEY = ''; store('mp_key', null); saloni = []; cur = null; $('pw').value = ''; mostra('login'); };
+$('btn-esci').onclick = () => { if (!confermaEsci()) return; KEY = ''; salvaChiave(''); saloni = []; cur = null; $('pw').value = ''; mostra('login'); };
 
 function mostra(v){
   ['login','list','detail'].forEach(x => $('v-' + x).hidden = x !== v);
@@ -588,7 +602,10 @@ $('btn-salva').onclick = async () => {
 (async function(){
   if (!KEY) return;
   try { await caricaElenco(); mostra('list'); }
-  catch(e){ KEY = ''; store('mp_key', null); }
+  catch(e){
+    KEY = '';
+    if (/password/i.test(e.message || '')) salvaChiave('');   // password cambiata: va reinserita; con un errore di rete l'accesso salvato resta valido
+  }
 })();
 </script>
 </body>
