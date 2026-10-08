@@ -156,10 +156,11 @@ h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute
 .tot{margin:14px 0 8px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .tot b{font-size:15px;color:var(--ink)}
 ul{list-style:none;margin:0;padding:0}
-li{padding:6px 0;border-bottom:1px solid var(--line)}
-li:last-child{border-bottom:0}
-.n{font-weight:600;overflow-wrap:anywhere}
-.s{display:block;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.saloni>li{padding:8px 0;border-bottom:1px solid var(--line)}
+.saloni>li:last-child{border-bottom:0}
+.s{display:block;font-weight:700;overflow-wrap:anywhere}
+.s+ul{margin-top:2px}
+.n{font-weight:400;overflow-wrap:anywhere;padding:1px 0 1px 10px}
 .passati .box{opacity:.7}
 .vuoto{color:var(--muted);padding:24px 0}
 """
@@ -167,12 +168,19 @@ li:last-child{border-bottom:0}
 
 def box(c):
     e = html.escape
-    righe = "".join('<li><span class="n">%s</span>%s</li>' % (
-        e(n), ('<span class="s">%s</span>' % e(s)) if s else "") for n, s in sorted(c["iscritti"], key=lambda x: x[0].lower()))
+    gruppi = {}
+    for nome, salone in c["iscritti"]:
+        chiave = norm(salone)
+        gruppi.setdefault(chiave, [salone or "Senza salone", []])[1].append(nome)
+    # saloni in ordine alfabetico ("Senza salone" in fondo), partecipanti in ordine alfabetico
+    ordinati = sorted(gruppi.items(), key=lambda kv: (kv[0] == "", kv[1][0].lower()))
+    blocchi = "".join('<li><span class="s">%s</span><ul>%s</ul></li>' % (
+        e(salone), "".join('<li class="n">%s</li>' % e(n) for n in sorted(nomi, key=str.lower)))
+        for _, (salone, nomi) in ordinati)
     luogo = '<div class="luogo">%s</div>' % e(c["luogo"]) if c["luogo"] else ""
     return ('<section class="box"><h3 class="titolo">%s</h3><div class="data">%s</div>%s'
-            '<div class="tot">Iscritti <b>%d</b></div><ul>%s</ul></section>') % (
-        e(c["titolo"]), e(data_estesa(c["data"], c["data_raw"])), luogo, len(c["iscritti"]), righe)
+            '<div class="tot">Iscritti <b>%d</b></div><ul class="saloni">%s</ul></section>') % (
+        e(c["titolo"]), e(data_estesa(c["data"], c["data_raw"])), luogo, len(c["iscritti"]), blocchi)
 
 
 def pagina(agente, corsi, oggi, aggiornato):
