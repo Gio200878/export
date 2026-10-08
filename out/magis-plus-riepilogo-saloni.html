@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Magis Plus — Riepilogo saloni</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@300;500;700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1330;--surface:#171C42;--surface-2:#1F2552;--ink:#EEEDF8;--muted:#A5A9CB;--line:#2C3266;
+  --violet:#A08BFF;--gold:#E8C766;--good:#5FD39E;--bad:#FF7C99;
+  --display:"Big Shoulders Display",sans-serif;--body:"Figtree",system-ui,sans-serif;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);font-weight:500;margin:0;letter-spacing:.01em}
+.wrap{max-width:1100px;margin:0 auto;padding:0 20px 110px}
+body.wide .wrap{max-width:none}   /* elenco saloni: tabella a tutta larghezza */
+[hidden]{display:none!important}
+
+nav.top{position:sticky;top:0;z-index:20;background:rgba(15,19,48,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav.top .wrap{display:flex;gap:10px;align-items:center;height:58px;padding-bottom:0}
+nav.top .brand{font-family:var(--display);font-weight:800;font-size:1.25rem;white-space:nowrap}
+nav.top .sp{flex:1}
+
+header.hero{padding:34px 0 6px}
+header.hero p{color:var(--muted);margin:6px 0 0;max-width:70ch}
+
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px 22px 24px;margin-top:18px}
+section.card h2{font-size:1.4rem;margin-bottom:4px}
+section.card h2 b{font-weight:800}
+section.card .sub{color:var(--muted);font-size:.9rem;margin-bottom:14px}
+h3.grp{font-size:1.05rem;font-weight:700;margin:22px 0 10px;padding-top:14px;border-top:1px solid var(--line)}
+h3.grp.first{border-top:0;padding-top:0;margin-top:4px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px 16px}
+.grid.two{grid-template-columns:1fr 1fr}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.wide{grid-column:1/-1}
+.field label{font-size:.85rem;color:var(--muted)}
+input,select,textarea{font:inherit;background:var(--surface-2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:9px 11px;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--violet);outline-offset:1px}
+input[readonly]{opacity:.65}
+textarea{resize:vertical;min-height:70px}
+input[type="number"]{-moz-appearance:textfield}
+
+.rate-table{margin-top:6px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.rate-row{display:grid;grid-template-columns:1fr 110px 110px;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)}
+.rate-row:last-child{border-bottom:0}
+.rate-row.head{background:var(--surface-2);font-size:.82rem;color:var(--muted);font-weight:600}
+.score-row{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;padding:5px 0}
+.score-row span{font-size:.92rem}
+.scale-hint{font-size:.78rem;color:var(--muted);margin:0 0 6px}
+
+.chipset{display:flex;flex-wrap:wrap;gap:8px}
+.chipset label{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:6px 12px;font-size:.85rem;color:var(--ink);cursor:pointer}
+.chipset input{width:auto;padding:0;margin:0}
+
+button{font:inherit;cursor:pointer}
+button.primary{font-weight:700;background:var(--gold);color:#1A1440;border:0;border-radius:99px;padding:10px 22px}
+button.primary:disabled{opacity:.35;cursor:not-allowed}
+button.ghost{font-weight:600;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:9px 16px}
+button.ghost:hover{border-color:var(--violet)}
+button.danger{color:var(--bad);border-color:var(--bad)}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+.tabs button{font-size:.9rem;font-weight:600;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:8px 16px}
+.tabs button[aria-current="true"]{background:var(--violet);color:#fff;border-color:var(--violet)}
+.tabs button.sub{font-size:.82rem;padding:6px 12px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-left:7px}
+
+.status{font-size:.88rem;color:var(--good)}
+.status.err{color:var(--bad)}
+
+/* elenco */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;align-items:center}
+.toolbar input{max-width:320px}
+.toolbar select{width:auto}
+.count{color:var(--muted);font-size:.88rem;margin-left:auto}
+.tblwrap{margin-top:12px;border:1px solid var(--line);border-radius:14px;overflow:auto;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:.92rem}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:var(--surface-2);color:var(--muted);font-size:.8rem;font-weight:600;cursor:pointer;user-select:none}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:0}
+.ok{color:var(--good);font-weight:700}
+.no{color:var(--muted)}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;border-radius:99px;padding:2px 9px;margin-left:8px}
+.tag.done{background:rgba(95,211,158,.15);color:var(--good)}
+.tag.part{background:rgba(232,199,102,.15);color:var(--gold)}
+.empty{padding:34px;text-align:center;color:var(--muted)}
+
+/* login */
+.login{max-width:380px;margin:60px auto 0}
+
+/* barra di salvataggio */
+.savebar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(15,19,48,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px))}
+.savebar .in{max-width:1100px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.savebar .msg{flex:1;min-width:180px}
+.backrow{margin-top:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+@media (max-width:640px){.grid.two{grid-template-columns:1fr}.rate-row{grid-template-columns:1fr 90px 90px}}
+</style>
+</head>
+<body>
+
+<nav class="top"><div class="wrap">
+  <span class="brand">Magis Plus</span>
+  <span class="sp"></span>
+  <button class="ghost" id="btn-esci" hidden>Esci</button>
+</div></nav>
+
+<div class="wrap">
+
+<!-- ================= ACCESSO ================= -->
+<section class="card login" id="v-login">
+  <h2>Riepilogo <b>saloni</b></h2>
+  <div class="sub">Area riservata. Inserisci la password per vedere e modificare i dati dei saloni.</div>
+  <form id="f-login" class="field" style="gap:10px">
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" required>
+    <button class="primary" type="submit">Entra</button>
+    <span class="status" id="st-login"></span>
+  </form>
+</section>
+
+<!-- ================= ELENCO ================= -->
+<div id="v-list" hidden>
+  <header class="hero">
+    <h1>Riepilogo <b style="font-weight:800">saloni</b></h1>
+    <p>Tutti i saloni che hanno compilato i moduli di raccolta dati. Clicca su una riga per aprire le schede, verificare, modificare e salvare.</p>
+  </header>
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Cerca per codice, salone, titolare, HM2I…">
+    <select id="flt">
+      <option value="">Tutti</option>
+      <option value="complete">Completi (3 moduli)</option>
+      <option value="incomplete">Incompleti</option>
+    </select>
+    <button class="ghost" id="btn-agg">Aggiorna</button>
+    <span class="status" id="st-list"></span>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="tblwrap">
+    <table>
+      <thead><tr>
+        <th data-s="code">Codice</th><th data-s="nome">Salone</th><th data-s="titolare">Titolare</th><th data-s="hm2i">HM2I</th>
+        <th data-s="g">Gestione e tariffe</th><th data-s="c">Collaboratori</th><th data-s="s">Immagine e sogno</th><th data-s="sv">Sondaggio</th><th data-s="upd">Ultimo aggiornamento</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ================= DETTAGLIO ================= -->
+<div id="v-detail" hidden>
+  <div class="backrow">
+    <button class="ghost" id="btn-back">← Tutti i saloni</button>
+  </div>
+  <header class="hero" style="padding-top:18px">
+    <h1 id="d-titolo"></h1>
+    <p id="d-sub"></p>
+  </header>
+
+  <section class="card">
+    <h2>Dati <b>salone</b></h2>
+    <div class="sub">Le modifiche a nome, titolare e HM2I valgono per tutti i moduli del salone.</div>
+    <div class="grid two">
+      <div class="field"><label>Codice salone</label><input id="m-codice" readonly></div>
+      <div class="field"><label>Nome salone</label><input id="m-nome"></div>
+      <div class="field"><label>Nome titolare</label><input id="m-titolare"></div>
+      <div class="field"><label>HM2I</label>
+        <select id="m-hm2i"></select>
+        <input id="m-hm2i-altro" placeholder="Scrivi il nome" style="display:none;margin-top:6px">
+      </div>
+    </div>
+  </section>
+
+  <div class="tabs" id="mtabs"></div>
+  <div id="mbody"></div>
+</div>
+
+</div>
+
+<div class="savebar" id="savebar" hidden><div class="in">
+  <span class="status msg" id="st-save"></span>
+  <button class="ghost" id="btn-annulla" disabled>Annulla modifiche</button>
+  <button class="primary" id="btn-salva" disabled>Salva modifiche</button>
+</div></div>
+
+<script>
+// ============================================================
+// Stesso indirizzo del Web App usato dai moduli di raccolta dati.
+// Lo script Google (Magis_Plus_AppsScript_Code.gs) deve avere ADMIN_KEY impostata.
+// ============================================================
+const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbzkit-ItfPpP93vVHPwxI73smi4kuT8JuvJe6F6y6byIG789lmn2fdJpVd3FRNfXYzJ/exec";
+
+const HM2I_LIST = ["Massimiliano Zanchetta","Moris Galli","Oscar Nicodemo","Andrea Vettorato","Simone Albino","Leonardo Bini",
+  "Giovanni Castellani","Diego Tesconi","Luciano Epifori","Lorenzo De Sarno","Andrea Faccioli","Fortunato Criscio",
+  "Annalisa Macchiarulo","Antonio Giambuzzi","Giancarlo Di Pace","Massimiliano Fina","Aurelio La Cognata"];
+
+const MODS = [
+  { k:'g', modulo:'gestione_tariffe',       titolo:'Gestione e tariffe' },
+  { k:'c', modulo:'analisi_collaboratore',  titolo:'Analisi collaboratori' },
+  { k:'s', modulo:'immagine_sogno_salone',  titolo:'Immagine e sogno del salone' },
+];
+const GESTIONE = [['compensi_titolari','Compensi titolari (€)'],['stipendi_collaboratori','Stipendi collaboratori (€)'],
+  ['premi_collaboratori','Premi aggiuntivi collaboratori (€)'],['affitti','Affitti (€)'],['acquisto_prodotti','Acquisto prodotti (€)'],
+  ['pubblicita','Pubblicità (€)'],['formazione','Formazione (€)'],['consulenza','Consulenza (commercialista...) (€)'],
+  ['utenze','Utenze (telefono, gas, energia...) (€)'],['altro','Altro (€)'],['mutui','Mutui, totale rate (€)'],['iva','Iva versata (€)']];
+const PUNTEGGI = [
+  ['Accoglienza', [['Saluto','Saluto'],['Controllo appuntamento in agenda','Controllo appuntamento in agenda'],['Routine accoglienza','Routine accoglienza'],['Comunicazione iniziative e promozioni','Comunicazione iniziative e promozioni']]],
+  ['Consulenza', [['Connessione','Connessione'],['Ascolto','Ascolto'],['Capacità di capire i desideri','Capacità di capire i desideri'],['Capacità di consigliare','Capacità di consigliare'],['Condivisione','Condivisione']]],
+  ['Professionalità tecnica', [['Lavaggio_Tempi','Lavaggio — tempi di esecuzione'],['Lavaggio_Metodo','Lavaggio — metodo'],['Lavaggio_Risultato','Lavaggio — risultato finale'],
+    ['Colore_Tempi','Colore — tempi di esecuzione'],['Colore_Metodo','Colore — metodo'],['Colore_Risultato','Colore — risultato finale'],
+    ['Taglio_Tempi','Taglio — tempi di esecuzione'],['Taglio_Metodo','Taglio — metodo'],['Taglio_Risultato','Taglio — risultato finale'],
+    ['Piega_Tempi','Piega — tempi di esecuzione'],['Piega_Metodo','Piega — metodo'],['Piega_Risultato','Piega — risultato finale']]],
+  ['Congedo', [['Verifica soddisfazione','Si accerta della soddisfazione della cliente'],['Propone/riconferma prodotti','Propone o riconferma prodotti di mantenimento'],
+    ['Quantifica ed elenca servizi','Quantifica ed elenca servizi'],['Fissa prossimo appuntamento','Fissa la data del prossimo appuntamento'],['Prende abbigliamento','Prende l\'abbigliamento dal guardaroba']]],
+  ['Immagine personale', [['Look coerente','Look coerente con la filosofia aziendale'],['Capelli','Capelli'],['Trucco/barba','Trucco / barba'],['Divisa','Divisa'],
+    ['Eleganza e postura','Eleganza e postura'],['Cura e pulizia spazi','Cura e pulizia degli spazi/oggetti utilizzati']]],
+];
+const IMMAGINE = ['Pulizia, ordine, organizzazione','Immagine','Armonia cromatica','Vetrina','Comunicazione web','Armonia ed energia percepita'];
+const POSTAZIONI = [['stilistico','Stilistico'],['tecnico','Tecnico'],['lavaggio','Lavaggio'],['consulenza','Consulenza']];
+const GIORNI = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'];
+
+// ---------------------------------------------------------------- utilità
+const $ = id => document.getElementById(id);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const getP = (o, p) => p.reduce((a, k) => (a == null ? undefined : a[k]), o);
+function setP(o, p, v){ let a = o; for (let i = 0; i < p.length - 1; i++){ if (a[p[i]] == null) a[p[i]] = {}; a = a[p[i]]; } a[p[p.length-1]] = v; }
+function safe(s){ return (s||'modulo').toString().trim().replace(/[^a-z0-9À-ÿ_-]+/gi,'_'); }
+function fname(codice, nome){ return `Magis Plus Raccolta Dati - ${safe(nome)} (${safe(codice)}).json`; }
+function fmtData(iso){ try { return new Date(iso).toLocaleString('it-IT', {dateStyle:'short', timeStyle:'short'}); } catch(e){ return ''; } }
+function setStatus(id, msg, err){ const e = $(id); if (e){ e.textContent = msg || ''; e.classList.toggle('err', !!err); } }
+function store(k, v){ try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch(e){} }
+function load(k){ try { return sessionStorage.getItem(k); } catch(e){ return null; } }
+
+let KEY = load('mp_key') || '';
+async function api(action, extra){
+  // text/plain: richiesta "semplice", senza preflight CORS (Apps Script non lo gestisce)
+  const res = await fetch(ENDPOINT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(Object.assign({ action, key: KEY }, extra)), redirect:'follow' });
+  let resp = null;
+  try { resp = await res.json(); } catch(e){}
+  if (!res.ok || !resp || resp.ok === false) throw new Error((resp && resp.error) || ('HTTP ' + res.status));
+  return resp;
+}
+
+// ---------------------------------------------------------------- stato
+let sondaggi = {};        // codice salone -> { risposte, creato_il, nome } (dal servizio Google)
+let sondaggiNoti = false; // false se il servizio Google non e' ancora aggiornato e non invia i sondaggi
+let saloni = [];          // [{code, mods:{g,c,s -> {fileId,name,updated,orig,work}}}]
+let cur = null;           // salone aperto
+let curTab = 'g';
+let curCollab = 0;
+let sortKey = 'code', sortDir = 1;
+
+// Il sito salva UN file per salone (modulo = "raccolta_dati_completa") con tutti e tre i moduli dentro;
+// i file vecchi, uno per modulo, sono ancora letti. Per ogni modulo vale il file piu' recente che lo contiene.
+const UNICO = 'raccolta_dati_completa';
+const CAMPI_SALONE = ['CODICE','NOME_SALONE','NOME_TITOLARE','HM2I'];
+const PARTI = { g:['gestione','tariffe'], c:['collaboratori'],
+  s:['numero_team','immagine','postazioni','materiale_salone','materiale_vetrine','presenza_social','brand','proposte_sviluppo','sogno'] };
+const haParte = (d, k) => PARTI[k].some(x => x in d);
+function raggruppa(items){
+  const m = new Map();
+  items.forEach(it => {
+    const d = it.data;
+    const legacy = MODS.find(x => x.modulo === d.modulo);
+    if (!legacy && d.modulo !== UNICO) return;
+    const rec = { fileId: it.fileId, name: it.name, updated: it.updated, unico: d.modulo === UNICO, orig: clone(d), work: clone(d) };
+    if (!m.has(d.CODICE)) m.set(d.CODICE, { code: d.CODICE, mods: {} });
+    const s = m.get(d.CODICE);
+    MODS.forEach(t => {
+      if (rec.unico ? !haParte(d, t.k) : t.modulo !== d.modulo) return;
+      const prec = s.mods[t.k];
+      if (!prec || (rec.updated || '') >= (prec.updated || '')) s.mods[t.k] = rec;
+    });
+  });
+  return [...m.values()];
+}
+const recs = s => [...new Set(Object.values(s.mods))];
+// dati anagrafici: prendo quelli del modulo aggiornato piu' di recente
+function meta(s){
+  const ms = recs(s).sort((a,b) => (b.updated||'').localeCompare(a.updated||''));
+  const d = ms[0] ? ms[0].orig : {};
+  return { nome: d.NOME_SALONE || '', titolare: d.NOME_TITOLARE || '', hm2i: d.HM2I || '' };
+}
+const ultimo = s => recs(s).map(m => m.updated || '').sort().pop() || '';
+const nCompletati = s => Object.keys(s.mods).length;
+
+// ---------------------------------------------------------------- accesso
+$('f-login').onsubmit = async e => {
+  e.preventDefault();
+  KEY = $('pw').value;
+  setStatus('st-login', 'Verifica in corso…');
+  try { await caricaElenco(); store('mp_key', KEY); setStatus('st-login', ''); mostra('list'); }
+  catch(err){ KEY = ''; store('mp_key', null); setStatus('st-login', err.message || String(err), true); }
+};
+$('btn-esci').onclick = () => { if (!confermaEsci()) return; KEY = ''; store('mp_key', null); saloni = []; cur = null; $('pw').value = ''; mostra('login'); };
+
+function mostra(v){
+  ['login','list','detail'].forEach(x => $('v-' + x).hidden = x !== v);
+  $('btn-esci').hidden = v === 'login';
+  document.body.classList.toggle('wide', v === 'list');
+  $('savebar').hidden = v !== 'detail';
+  window.scrollTo({ top: 0 });
+}
+
+// ---------------------------------------------------------------- elenco
+async function caricaElenco(){
+  const r = await api('admin_list');
+  saloni = raggruppa(r.items || []);
+  sondaggiNoti = Array.isArray(r.sondaggi);
+  sondaggi = {};
+  (r.sondaggi || []).forEach(x => { sondaggi[x.codice] = x; });
+  disegnaElenco();
+}
+$('btn-agg').onclick = async () => {
+  setStatus('st-list', 'Aggiornamento…');
+  try { await caricaElenco(); setStatus('st-list', ''); } catch(e){ setStatus('st-list', e.message || String(e), true); }
+};
+['q','flt'].forEach(id => $(id).addEventListener('input', () => disegnaElenco()));
+document.querySelectorAll('th[data-s]').forEach(th => th.onclick = () => {
+  sortKey === th.dataset.s ? sortDir *= -1 : (sortKey = th.dataset.s, sortDir = 1);
+  disegnaElenco();
+});
+
+function disegnaElenco(){
+  const q = $('q').value.trim().toLowerCase(), flt = $('flt').value;
+  const righe = saloni.map(s => ({ s, m: meta(s) })).filter(({s, m}) => {
+    if (flt === 'complete' && nCompletati(s) < 3) return false;
+    if (flt === 'incomplete' && nCompletati(s) >= 3) return false;
+    return !q || [s.code, m.nome, m.titolare, m.hm2i].join(' ').toLowerCase().includes(q);
+  });
+  const val = ({s, m}) => ({ code: s.code, nome: m.nome, titolare: m.titolare, hm2i: m.hm2i, upd: ultimo(s),
+    sv: sondaggi[s.code] ? 1 + (sondaggi[s.code].risposte || 0) : 0, g: s.mods.g ? 1 : 0, c: s.mods.c ? (s.mods.c.orig.collaboratori||[]).length : 0, s: s.mods.s ? 1 : 0 }[sortKey]);
+  righe.sort((a, b) => {
+    const x = val(a), y = val(b);
+    return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'it', { numeric: true })) * sortDir;
+  });
+  $('count').textContent = `${righe.length} di ${saloni.length} saloni`;
+  $('rows').innerHTML = righe.length ? righe.map(({s, m}) => {
+    const n = nCompletati(s);
+    const ok = (k, txt) => s.mods[k] ? `<span class="ok">✓ ${esc(txt||'')}</span>` : '<span class="no">—</span>';
+    const sv = sondaggi[s.code];
+    const svCella = !sondaggiNoti ? '<span class="no" title="Aggiorna lo script Google: non invia ancora i dati dei sondaggi">n.d.</span>'
+      : sv ? `<span class="ok" title="Sondaggio creato · ${sv.risposte || 0} ${sv.risposte === 1 ? 'risposta completata' : 'risposte completate'}">✓ ${sv.risposte || 0}</span>`
+      : '<span class="no" title="Sondaggio non creato">—</span>';
+    const nc = s.mods.c ? (s.mods.c.orig.collaboratori || []).length : 0;
+    return `<tr data-code="${esc(s.code)}"><td><b>${esc(s.code)}</b></td>
+      <td>${esc(m.nome)}<span class="tag ${n >= 3 ? 'done' : 'part'}">${n >= 3 ? 'Completo' : n + '/3'}</span></td>
+      <td>${esc(m.titolare)}</td><td>${esc(m.hm2i)}</td>
+      <td>${ok('g')}</td><td>${ok('c', nc + (nc === 1 ? ' collaboratore' : ' collaboratori'))}</td><td>${ok('s')}</td><td>${svCella}</td>
+      <td>${esc(fmtData(ultimo(s)))}</td></tr>`;
+  }).join('') : '<tr><td colspan="9" class="empty">Nessun salone trovato.</td></tr>';
+  document.querySelectorAll('#rows tr[data-code]').forEach(tr => tr.onclick = () => apri(tr.dataset.code));
+}
+
+// ---------------------------------------------------------------- dettaglio
+function apri(code){
+  cur = saloni.find(s => s.code === code);
+  if (!cur) return;
+  curTab = Object.keys(cur.mods)[0] || 'g'; curCollab = 0;
+  const m = meta(cur);
+  $('d-titolo').innerHTML = esc(m.nome || 'Salone') + ' <b style="font-weight:800;color:var(--gold)">' + esc(cur.code) + '</b>';
+  $('m-codice').value = cur.code;
+  $('m-nome').value = m.nome; $('m-titolare').value = m.titolare;
+  const sel = $('m-hm2i');
+  const lista = HM2I_LIST.includes(m.hm2i) || !m.hm2i ? HM2I_LIST : [...HM2I_LIST, m.hm2i];
+  sel.innerHTML = '<option value="">— seleziona —</option>' + lista.map(n => `<option>${esc(n)}</option>`).join('') + '<option value="__altro__">Altro (nuovo)…</option>';
+  sel.value = m.hm2i; $('m-hm2i-altro').style.display = 'none'; $('m-hm2i-altro').value = '';
+  setStatus('st-save', '');
+  mostra('detail');
+  disegnaDettaglio();
+}
+function hm2iCorrente(){ const s = $('m-hm2i'); return s.value === '__altro__' ? $('m-hm2i-altro').value.trim() : s.value; }
+function applicaMeta(){
+  recs(cur).forEach(m => {
+    m.work.NOME_SALONE = $('m-nome').value.trim();
+    m.work.NOME_TITOLARE = $('m-titolare').value.trim();
+    m.work.HM2I = hm2iCorrente();
+  });
+  aggiornaBarra();
+}
+['m-nome','m-titolare','m-hm2i-altro'].forEach(id => $(id).addEventListener('input', applicaMeta));
+$('m-hm2i').onchange = () => { $('m-hm2i-altro').style.display = $('m-hm2i').value === '__altro__' ? 'block' : 'none'; if ($('m-hm2i').value === '__altro__') $('m-hm2i-altro').focus(); applicaMeta(); };
+
+const sporco = m => JSON.stringify(m.work) !== JSON.stringify(m.orig);
+const pick = (o, chiavi) => JSON.stringify(chiavi.map(k => o[k]));
+const anagraficaCambiata = m => pick(m.work, CAMPI_SALONE) !== pick(m.orig, CAMPI_SALONE);
+// il modulo k e' stato modificato? (in un file unico si confrontano solo i campi di quel modulo)
+const sporcoMod = (k, m) => m.unico ? pick(m.work, PARTI[k]) !== pick(m.orig, PARTI[k]) : sporco(m);
+const recSporchi = () => cur ? recs(cur).filter(sporco) : [];
+const moduliSporchi = () => cur ? Object.entries(cur.mods).filter(([k, m]) => sporcoMod(k, m)) : [];
+function confermaEsci(){ return !recSporchi().length || confirm('Ci sono modifiche non salvate. Vuoi uscire senza salvarle?'); }
+
+$('btn-back').onclick = () => { if (!confermaEsci()) return; cur = null; disegnaElenco(); mostra('list'); };
+window.addEventListener('beforeunload', e => { if (recSporchi().length){ e.preventDefault(); e.returnValue = ''; } });
+
+function disegnaDettaglio(){
+  const m0 = meta(cur);
+  $('d-sub').textContent = nCompletati(cur) >= 3 ? 'Tutti e tre i moduli sono stati compilati.' : `Compilati ${nCompletati(cur)} moduli su 3.`;
+  $('mtabs').innerHTML = MODS.map(t => {
+    const m = cur.mods[t.k];
+    return `<button data-t="${t.k}" aria-current="${t.k === curTab}">${esc(t.titolo)}${m ? '' : ' (non compilato)'}${m && sporcoMod(t.k, m) ? '<span class="dot" title="Modificato"></span>' : ''}</button>`;
+  }).join('');
+  $('mtabs').querySelectorAll('button').forEach(b => b.onclick = () => { curTab = b.dataset.t; disegnaDettaglio(); });
+  const m = cur.mods[curTab];
+  const body = $('mbody');
+  if (!m){ body.innerHTML = '<section class="card"><div class="empty">Questo modulo non è ancora stato compilato dal salone.</div></section>'; aggiornaBarra(); return; }
+  body.innerHTML = curTab === 'g' ? htmlGestione(m.work) : curTab === 'c' ? htmlCollab(m.work) : htmlSalone(m.work);
+  const info = `<p class="status" style="color:var(--muted);margin:14px 2px 0">File: ${esc(m.name)} · ultimo aggiornamento ${esc(fmtData(m.updated))}</p>`;
+  body.insertAdjacentHTML('beforeend', info);
+  collega(body, m);
+  aggiornaBarra();
+}
+
+// campo con percorso nel modulo (work); il percorso e' un array serializzato in data-p
+function attrs(path, kind){ return `data-p="${esc(JSON.stringify(path))}" data-k="${kind}"`; }
+function val(w, path){ const v = getP(w, path); return v == null ? '' : v; }
+function inp(w, label, path, kind, extra, wide){
+  const t = kind === 'num' ? 'number' : kind === 'date' ? 'date' : 'text';
+  return `<div class="field${wide ? ' wide' : ''}"><label>${esc(label)}</label><input type="${t}" ${extra||''} ${attrs(path, kind)} value="${esc(val(w, path))}"></div>`;
+}
+function area(w, label, path, min){
+  return `<div class="field wide"><label>${esc(label)}</label><textarea ${min ? `style="min-height:${min}px"` : ''} ${attrs(path, 'txt')}>${esc(val(w, path))}</textarea></div>`;
+}
+function score(w, label, path){
+  return `<div class="score-row"><span>${esc(label)}</span><input type="number" min="0" max="10" ${attrs(path, 'num')} value="${esc(val(w, path))}"></div>`;
+}
+function chips(w, path, opzioni){
+  const sel = getP(w, path) || [];
+  return `<div class="chipset">${opzioni.map(o => `<label><input type="checkbox" data-arr="${esc(JSON.stringify(path))}" value="${esc(o)}" ${sel.includes(o) ? 'checked' : ''}>${esc(o)}</label>`).join('')}</div>`;
+}
+
+function htmlGestione(w){
+  const serv = (w.tariffe && w.tariffe.servizi) || [];
+  return `<section class="card"><h2>Gestione</h2><div class="sub">Importi annui.</div>
+    <div class="grid">${GESTIONE.map(([k, l]) => inp(w, l, ['gestione', k], 'num', 'min="0" step="1"')).join('')}</div></section>
+    <section class="card"><h2>Tariffe</h2>
+    <div class="grid two">${inp(w, 'Data in vigore da', ['tariffe', 'data_vigore'], 'date')}</div>
+    <div class="rate-table"><div class="rate-row head"><span>Servizio</span><span>Femminile €</span><span>Maschile €</span></div>
+    ${serv.map((s, i) => `<div class="rate-row"><span>${esc(s.servizio)}</span>
+      <input type="number" min="0" step="0.5" ${attrs(['tariffe','servizi',i,'femminile'], 'num')} value="${esc(val(w, ['tariffe','servizi',i,'femminile']))}">
+      <input type="number" min="0" step="0.5" ${attrs(['tariffe','servizi',i,'maschile'], 'num')} value="${esc(val(w, ['tariffe','servizi',i,'maschile']))}"></div>`).join('')}
+    </div></section>`;
+}
+
+function htmlCollab(w){
+  const cs = w.collaboratori || [];
+  if (curCollab >= cs.length) curCollab = Math.max(0, cs.length - 1);
+  const tabs = `<div class="tabs" style="margin:0 0 6px">${cs.map((c, i) =>
+    `<button class="sub" data-c="${i}" aria-current="${i === curCollab}">${esc(c.NOME_OPERATORE || 'Collaboratore ' + (i + 1))}</button>`).join('')}
+    <button class="sub ghost" data-addc>+ Aggiungi collaboratore</button></div>`;
+  if (!cs.length) return `<section class="card"><h2>Analisi <b>collaboratori</b></h2>${tabs}<div class="empty">Nessun collaboratore inserito.</div></section>`;
+  const b = ['collaboratori', curCollab];
+  const P = k => [...b, k];
+  return `<section class="card"><h2>Analisi <b>collaboratori</b></h2>${tabs}
+    <h3 class="grp first">Dati identificativi</h3>
+    <div class="grid two">
+      ${inp(w, 'Nome titolare o collaboratore', P('NOME_OPERATORE'), 'txt')}
+      <div class="field"><label>Ruolo</label><select ${attrs(P('RUOLO'), 'txt')}>${['', 'Titolare', 'Collaboratore', 'Receptionist'].map(r =>
+        `<option ${val(w, P('RUOLO')) === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select></div>
+      ${inp(w, 'Ore lavorate al giorno', P('ORE_LAVORATE'), 'num', 'min="0" max="14" step="0.5"')}
+      <div class="field wide"><label>Clientela su cui lavora maggiormente</label>${chips(w, P('CLIENTELA'), ['Femminile', 'Maschile'])}</div>
+      <div class="field wide"><label>Giorni lavorati</label>${chips(w, P('GIORNI'), GIORNI)}</div>
+    </div>
+    <div class="scale-hint" style="margin-top:18px">Punteggi da 0 (assente) a 10 (eccellente).</div>
+    ${PUNTEGGI.map(([g, voci]) => `<h3 class="grp">${esc(g)}</h3><div class="grid two">${voci.map(([k, l]) => score(w, l, [...b, 'punteggi', k])).join('')}</div>`).join('')}
+    <h3 class="grp">Note</h3>
+    <div class="grid">${area(w, 'Proposte formative per l\'anno successivo', P('proposte_formative'))}${inp(w, 'Compenso e incentivi', P('compenso_incentivi'), 'txt')}</div>
+    <div style="margin-top:18px"><button class="ghost danger" data-delc>Elimina questo collaboratore</button></div>
+  </section>`;
+}
+
+function htmlSalone(w){
+  return `<section class="card"><h2>Immagine <b>interna ed esterna</b></h2>
+    <div class="grid two">${inp(w, 'Numero totale componenti del team', ['numero_team'], 'num', 'min="0"')}</div>
+    <h3 class="grp">Il sogno</h3><div class="grid">${area(w, 'Il sogno del salone', ['sogno'], 100)}</div>
+    <h3 class="grp">Immagine del salone <span style="font-weight:400;color:var(--muted);font-size:.8rem">(0–10)</span></h3>
+    <div class="grid two">${IMMAGINE.map(l => score(w, l, ['immagine', l])).join('')}</div>
+    <h3 class="grp">Postazioni</h3>
+    <div class="grid two">${POSTAZIONI.map(([k, l]) => `<div class="score-row"><span>${l}</span><input type="number" min="0" ${attrs(['postazioni', k], 'num')} value="${esc(val(w, ['postazioni', k]))}"></div>`).join('')}</div>
+    <h3 class="grp">Materiale e presenza online</h3>
+    <div class="grid">${area(w, 'Materiale presente nel salone', ['materiale_salone'])}${area(w, 'Materiale presente sulle vetrine', ['materiale_vetrine'])}
+      ${area(w, 'Presenza social', ['presenza_social'])}${inp(w, 'Brand con cui lavori maggiormente', ['brand'], 'txt', '', true)}</div></section>
+    <section class="card"><h2>Proposte di <b>sviluppo</b></h2><div class="grid">${area(w, 'Proposte di sviluppo per l\'anno successivo', ['proposte_sviluppo'])}</div></section>`;
+}
+
+// collega gli input al modulo (work) e aggiorna lo stato "modificato"
+function collega(root, m){
+  root.querySelectorAll('[data-p]').forEach(el => {
+    const on = () => {
+      const p = JSON.parse(el.dataset.p);
+      let v = el.value;
+      if (el.dataset.k === 'num') v = v === '' ? null : Number(v);
+      setP(m.work, p, v);
+      aggiornaBarra();
+    };
+    el.addEventListener('input', on); el.addEventListener('change', on);
+  });
+  root.querySelectorAll('input[data-arr]').forEach(el => el.addEventListener('change', () => {
+    const p = JSON.parse(el.dataset.arr);
+    const tutti = [...root.querySelectorAll('input[data-arr]')].filter(x => x.dataset.arr === el.dataset.arr);
+    setP(m.work, p, tutti.filter(x => x.checked).map(x => x.value));
+    aggiornaBarra();
+  }));
+  root.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { curCollab = +b.dataset.c; disegnaDettaglio(); });
+  const add = root.querySelector('[data-addc]');
+  if (add) add.onclick = () => {
+    (m.work.collaboratori = m.work.collaboratori || []).push({ NOME_OPERATORE:'', RUOLO:'', ORE_LAVORATE:null, CLIENTELA:[], GIORNI:[],
+      punteggi: Object.fromEntries(PUNTEGGI.flatMap(([, v]) => v.map(([k]) => [k, null]))), proposte_formative:'', compenso_incentivi:'' });
+    curCollab = m.work.collaboratori.length - 1; disegnaDettaglio();
+  };
+  const del = root.querySelector('[data-delc]');
+  if (del) del.onclick = () => {
+    const c = m.work.collaboratori[curCollab];
+    if (!confirm(`Eliminare ${c.NOME_OPERATORE || 'questo collaboratore'}? L'eliminazione diventa definitiva quando salvi.`)) return;
+    m.work.collaboratori.splice(curCollab, 1); curCollab = Math.max(0, curCollab - 1); disegnaDettaglio();
+  };
+}
+
+// ---------------------------------------------------------------- salvataggio
+function aggiornaBarra(){
+  const sp = recSporchi(), modSp = moduliSporchi();
+  $('btn-salva').disabled = !sp.length; $('btn-annulla').disabled = !sp.length;
+  if (sp.length){
+    const parti = modSp.map(([k]) => MODS.find(x => x.k === k).titolo);
+    if (sp.some(anagraficaCambiata)) parti.unshift('Dati salone');
+    setStatus('st-save', `Modifiche non salvate in: ${parti.join(', ')}.`);
+  }
+  else if ($('st-save').classList.contains('err') || !$('st-save').textContent.startsWith('Salvato')) setStatus('st-save', '');
+  document.querySelectorAll('#mtabs button').forEach(b => {
+    const m = cur && cur.mods[b.dataset.t], dot = b.querySelector('.dot');
+    const mod = m && sporcoMod(b.dataset.t, m);
+    if (mod && !dot) b.insertAdjacentHTML('beforeend', '<span class="dot" title="Modificato"></span>');
+    if (dot && !mod) dot.remove();
+  });
+}
+$('btn-annulla').onclick = () => {
+  if (!confirm('Annullare tutte le modifiche non salvate?')) return;
+  recs(cur).forEach(m => m.work = clone(m.orig));
+  const m = meta(cur); $('m-nome').value = m.nome; $('m-titolare').value = m.titolare;
+  $('m-hm2i').value = m.hm2i; $('m-hm2i-altro').style.display = 'none';
+  setStatus('st-save', ''); disegnaDettaglio();
+};
+$('btn-salva').onclick = async () => {
+  const sp = recSporchi(); if (!sp.length) return;   // un file per salone (o uno per modulo nei vecchi salvataggi)
+  $('btn-salva').disabled = true; setStatus('st-save', 'Salvataggio in corso…');
+  const errori = [];
+  for (const m of sp){
+    try {
+      const r = await api('admin_save', { fileId: m.fileId, data: m.work, filename: fname(m.work.CODICE, m.work.NOME_SALONE) });
+      m.orig = clone(m.work); m.updated = r.updated || new Date().toISOString();
+      m.name = fname(m.work.CODICE, m.work.NOME_SALONE);
+    } catch(e){ errori.push(`${m.name}: ${e.message || e}`); }
+  }
+  if (errori.length) setStatus('st-save', 'Salvataggio non riuscito — ' + errori.join(' · '), true);
+  else setStatus('st-save', 'Salvato. Tutte le modifiche sono state registrate.');
+  disegnaDettaglio();
+  if (errori.length) setStatus('st-save', 'Salvataggio non riuscito — ' + errori.join(' · '), true);
+};
+
+// ---------------------------------------------------------------- avvio
+(async function(){
+  if (!KEY) return;
+  try { await caricaElenco(); mostra('list'); }
+  catch(e){ KEY = ''; store('mp_key', null); }
+})();
+</script>
+</body>
+</html>

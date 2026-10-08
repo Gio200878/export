@@ -359,12 +359,21 @@ function gestisciAdmin(p) {
 /** Per ogni salone e modulo restituisce il file piu' recente (i salvataggi ripetuti creano piu' file). */
 function elencaModuli() {
   const piuRecenti = {};
+  const sondaggi = {};   // un sondaggio per salone: { codice, nome, creato_il, risposte (numero di questionari inviati) }
   const it = cartella_().getFiles();
   while (it.hasNext()) {
     const file = it.next();
     if (file.getSize() > 2000000) continue;
     let d;
     try { d = JSON.parse(file.getBlob().getDataAsString()); } catch (err) { continue; }
+    if (d && d.CODICE && file.getName().indexOf(SONDAGGIO_PREFIX) === 0) {
+      const t0 = file.getLastUpdated().getTime();
+      if (!sondaggi[d.CODICE] || t0 > sondaggi[d.CODICE].t) {
+        sondaggi[d.CODICE] = { t: t0, codice: String(d.CODICE), nome: d.NOME_SALONE || "", creato_il: d.creato_il || "",
+                               risposte: (d.risposte || []).length };
+      }
+      continue;
+    }
     if (!d || !d.modulo || !d.CODICE) continue;
     const t = file.getLastUpdated().getTime();
     const k = d.CODICE + "|" + d.modulo;
@@ -373,7 +382,8 @@ function elencaModuli() {
                         updated: file.getLastUpdated().toISOString(), data: d };
     }
   }
-  return { ok: true, items: Object.keys(piuRecenti).map(function (k) { return piuRecenti[k]; }) };
+  return { ok: true, items: Object.keys(piuRecenti).map(function (k) { return piuRecenti[k]; }),
+           sondaggi: Object.keys(sondaggi).map(function (k) { const x = sondaggi[k]; delete x.t; return x; }) };
 }
 
 /** Sovrascrive il contenuto di un file gia' esistente (Drive tiene lo storico delle versioni). */
