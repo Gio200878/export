@@ -93,6 +93,26 @@ def data_estesa(d, grezza):
     return "%s %d %s %d" % (GIORNI[d.weekday()], d.day, MESI[d.month - 1], d.year)
 
 
+def ingresso_valido(s):
+    """True se Ingresso1 contiene una data valida (gg/mm/aaaa, con o senza ora)."""
+    s = (s or "").strip()
+    for fmt in ("%d/%m/%Y %H:%M", "%d/%m/%Y %H:%M:%S", "%d/%m/%Y"):
+        try:
+            datetime.strptime(s, fmt)
+            return True
+        except ValueError:
+            pass
+    return False
+
+
+def esito(t):
+    """Per i corsi passati: voto se presente, '--' se manca, 'X' se non c'e' un ingresso valido."""
+    if not ingresso_valido(t.get("Ingresso1")):
+        return "X"
+    voto = (t.get("Voto") or "").strip()
+    return voto if voto and voto != "-" else "--"
+
+
 def bella(s):
     """'cinzia germino' -> 'Cinzia Germino' (solo se il CSV e' tutto maiuscolo/minuscolo)."""
     s = " ".join((s or "").split())
@@ -132,7 +152,7 @@ def carica_corsi(ticket):
         if chiave in corso["_visti"]:
             continue
         corso["_visti"].add(chiave)
-        corso["iscritti"].append((nome, salone))
+        corso["iscritti"].append((nome, salone, esito(t)))
     return per_hm2i, scartati
 
 
@@ -161,21 +181,32 @@ ul{list-style:none;margin:0;padding:0}
 .s{display:block;font-weight:700;overflow-wrap:anywhere}
 .s+ul{margin-top:2px}
 .n{font-weight:400;overflow-wrap:anywhere;padding:1px 0 1px 10px}
-.passati .box{opacity:.7}
+.n{display:flex;justify-content:space-between;gap:8px}
+.n b{font-size:13px;min-width:24px;text-align:right}
+.n b.x{color:#b3261e}.n b.nv{color:var(--muted)}.n b.v{color:var(--accent)}
+.leg{font-size:12px;color:var(--muted);margin:-4px 0 12px}
+.passati .box{opacity:.92}
 .vuoto{color:var(--muted);padding:24px 0}
 """
 
 
-def box(c):
+def riga(nome, es, passato):
+    if not passato:
+        return '<li class="n">%s</li>' % html.escape(nome)
+    cl = "x" if es == "X" else ("nv" if es == "--" else "v")
+    return '<li class="n"><span>%s</span><b class="%s">%s</b></li>' % (html.escape(nome), cl, html.escape(es))
+
+
+def box(c, passato=False):
     e = html.escape
     gruppi = {}
-    for nome, salone in c["iscritti"]:
+    for nome, salone, es in c["iscritti"]:
         chiave = norm(salone)
-        gruppi.setdefault(chiave, [salone or "Senza salone", []])[1].append(nome)
+        gruppi.setdefault(chiave, [salone or "Senza salone", []])[1].append((nome, es))
     # saloni in ordine alfabetico ("Senza salone" in fondo), partecipanti in ordine alfabetico
     ordinati = sorted(gruppi.items(), key=lambda kv: (kv[0] == "", kv[1][0].lower()))
     blocchi = "".join('<li><span class="s">%s</span><ul>%s</ul></li>' % (
-        e(salone), "".join('<li class="n">%s</li>' % e(n) for n in sorted(nomi, key=str.lower)))
+        e(salone), "".join(riga(n, es, passato) for n, es in sorted(nomi, key=lambda x: x[0].lower())))
         for _, (salone, nomi) in ordinati)
     luogo = '<div class="luogo">%s</div>' % e(c["luogo"]) if c["luogo"] else ""
     return ('<section class="box"><h3 class="titolo">%s</h3><div class="data">%s</div>%s'
@@ -192,7 +223,7 @@ def pagina(agente, corsi, oggi, aggiornato):
     if prossimi:
         parti.append('<h2>Prossimi corsi</h2><div class="grid">%s</div>' % "".join(box(c) for c in prossimi))
     if passati:
-        parti.append('<h2>Corsi passati</h2><div class="grid passati">%s</div>' % "".join(box(c) for c in passati))
+        parti.append('<h2>Corsi passati</h2><p class="leg">Voto del partecipante &middot; <b>--</b> presente, voto non assegnato &middot; <b>X</b> assente (ingresso non registrato)</p><div class="grid passati">%s</div>' % "".join(box(c, True) for c in passati))
     if not parti:
         parti.append('<p class="vuoto">Nessun iscritto al momento.</p>')
     return """<!DOCTYPE html>
