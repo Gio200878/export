@@ -3,6 +3,45 @@ require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/logic.php';
 auth_require_admin();
 
+// ------------------------------------------------------------------
+// SOSPENSIONI HEMI (giorni interi o solo alcune ore)
+// ------------------------------------------------------------------
+$erroreSosp = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $azione = $_POST['azione'] ?? '';
+    if ($azione === 'sospensione_elimina') {
+        db()->prepare('DELETE FROM hemi_sospensioni WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
+        header('Location: appuntamenti_admin.php?sosp=ok#sospensioni');
+        exit;
+    }
+    if ($azione === 'sospensione_aggiungi') {
+        $hemiId = (int)($_POST['hemi_id'] ?? 0);
+        $dal = $_POST['data_inizio'] ?? '';
+        $al = ($_POST['data_fine'] ?? '') ?: $dal;
+        $soloOre = !empty($_POST['solo_ore']);
+        $oraDa = $soloOre ? ($_POST['ora_inizio'] ?? '') : null;
+        $oraA = $soloOre ? ($_POST['ora_fine'] ?? '') : null;
+        $motivo = trim($_POST['motivo'] ?? '') ?: null;
+
+        $chk = db()->prepare("SELECT 1 FROM accounts WHERE id = ? AND ruolo = 'hemi'");
+        $chk->execute([$hemiId]);
+        if (!$chk->fetchColumn()) {
+            $erroreSosp = 'Seleziona un HEMI.';
+        } elseif (!$dal || strtotime($dal) === false || strtotime($al) === false) {
+            $erroreSosp = 'Inserisci le date della sospensione.';
+        } elseif ($al < $dal) {
+            $erroreSosp = 'La data "al" deve essere uguale o successiva alla data "dal".';
+        } elseif ($soloOre && (!$oraDa || !$oraA || $oraA <= $oraDa)) {
+            $erroreSosp = 'Inserisci un intervallo orario valido (ora fine successiva all\'ora inizio).';
+        } else {
+            db()->prepare('INSERT INTO hemi_sospensioni (hemi_id, data_inizio, data_fine, ora_inizio, ora_fine, motivo) VALUES (?,?,?,?,?,?)')
+                ->execute([$hemiId, $dal, $al, $oraDa, $oraA, $motivo]);
+            header('Location: appuntamenti_admin.php?sosp=ok#sospensioni');
+            exit;
+        }
+    }
+}
+
 // Filtri da querystring
 $filtri = array_filter([
     'stato' => $_GET['stato'] ?? '',
@@ -88,6 +127,13 @@ foreach ($righeOre as $r) {
 // Ordina per cognome
 uasort($riepilogoOre, fn($a, $b) => strcmp($a['cognome'], $b['cognome']));
 
+$sospensioni = db()->query(
+    "SELECT s.*, he.nome, he.cognome FROM hemi_sospensioni s JOIN accounts he ON he.id = s.hemi_id
+     WHERE s.data_fine >= CURDATE() ORDER BY s.data_inizio, he.cognome"
+)->fetchAll();
+
+function fmt_data_it($d) { return date('d/m/Y', strtotime($d)); }
+
 function badge_stato_html($stato) {
     $map = ['da_approvare' => ['badge-giallo','Da approvare'], 'approvato' => ['badge-verde','Approvato'], 'rifiutato' => ['badge-rosso','Rifiutato']];
     [$cls, $label] = $map[$stato] ?? ['','?'];
@@ -172,6 +218,57 @@ function badge_stato_html($stato) {
     </tfoot>
   </table>
 
+  <h2 id="sospensioni" style="margin-top:36px;">Sospensioni HEMI</h2>
+  <?php if ($erroreSosp): ?><div class="alert alert-error"><?= htmlspecialchars($erroreSosp) ?></div><?php endif; ?>
+  <?php if (($_GET['sosp'] ?? '') === 'ok'): ?><div class="alert alert-success">Sospensioni aggiornate.</div><?php endif; ?>
+  <form method="post" action="appuntamenti_admin.php#sospensioni" class="filters-bar" style="align-items:center;">
+    <input type="hidden" name="azione" value="sospensione_aggiungi">
+    <select name="hemi_id" required>
+      <option value="">HEMI...</option>
+      <?php foreach ($hemiList as $h): ?>
+        <option value="<?= $h['id'] ?>" <?= ($_POST['hemi_id'] ?? '')==$h['id']?'selected':'' ?>><?= htmlspecialchars($h['cognome'].' '.$h['nome']) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <label style="font-size:13px;color:var(--text-light);">Dal</label>
+    <input type="date" name="data_inizio" required value="<?= htmlspecialchars($_POST['data_inizio'] ?? '') ?>">
+    <label style="font-size:13px;color:var(--text-light);">al</label>
+    <input type="date" name="data_fine" value="<?= htmlspecialchars($_POST['data_fine'] ?? '') ?>">
+    <label style="font-size:13px;"><input type="checkbox" name="solo_ore" id="sosp-solo-ore" value="1" onchange="toggleOreSosp()" <?= !empty($_POST['solo_ore'])?'checked':'' ?>> Solo alcune ore</label>
+    <span id="sosp-ore" style="display:none;align-items:center;gap:6px;">
+      <label style="font-size:13px;color:var(--text-light);">dalle</label>
+      <input type="time" name="ora_inizio" value="<?= htmlspecialchars($_POST['ora_inizio'] ?? '') ?>">
+      <label style="font-size:13px;color:var(--text-light);">alle</label>
+      <input type="time" name="ora_fine" value="<?= htmlspecialchars($_POST['ora_fine'] ?? '') ?>">
+    </span>
+    <input type="text" name="motivo" placeholder="Motivo (facoltativo)" maxlength="255" value="<?= htmlspecialchars($_POST['motivo'] ?? '') ?>">
+    <button class="btn btn-primary" type="submit">Aggiungi sospensione</button>
+  </form>
+  <p style="font-size:12px;color:var(--text-light);margin-top:-6px;">Lasciando vuoto "al" la sospensione vale per il solo giorno "dal". Con "Solo alcune ore" l'intervallo orario vale per ogni giorno del periodo.</p>
+
+  <table class="data-table">
+    <thead><tr><th>HEMI</th><th>Periodo</th><th>Orario</th><th>Motivo</th><th></th></tr></thead>
+    <tbody>
+      <?php if (empty($sospensioni)): ?>
+        <tr><td colspan="5" style="color:var(--text-light);">Nessuna sospensione in corso o futura.</td></tr>
+      <?php endif; ?>
+      <?php foreach ($sospensioni as $sp): ?>
+        <tr>
+          <td><?= htmlspecialchars($sp['cognome'].' '.$sp['nome']) ?></td>
+          <td><?= fmt_data_it($sp['data_inizio']) ?><?= $sp['data_fine'] !== $sp['data_inizio'] ? ' - ' . fmt_data_it($sp['data_fine']) : '' ?></td>
+          <td><?= ($sp['ora_inizio'] !== null && $sp['ora_fine'] !== null) ? substr($sp['ora_inizio'],0,5).'-'.substr($sp['ora_fine'],0,5) : 'Giorni interi' ?></td>
+          <td><?= htmlspecialchars($sp['motivo'] ?? '') ?></td>
+          <td>
+            <form method="post" action="appuntamenti_admin.php#sospensioni" style="display:inline;" onsubmit="return confirm('Eliminare questa sospensione?');">
+              <input type="hidden" name="azione" value="sospensione_elimina">
+              <input type="hidden" name="id" value="<?= $sp['id'] ?>">
+              <button class="btn btn-sm btn-reject" type="submit">Elimina</button>
+            </form>
+          </td>
+        </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+
   <h2 style="margin-top:36px;">Ore consumate per HEMI</h2>
   <form method="get" class="filters-bar" style="align-items:center;">
     <?php foreach (['stato','hm2i_id','hemi_id','area_id','zona_id'] as $f): ?>
@@ -220,6 +317,11 @@ function badge_stato_html($stato) {
 </div>
 
 <script>
+function toggleOreSosp() {
+  document.getElementById('sosp-ore').style.display = document.getElementById('sosp-solo-ore').checked ? 'inline-flex' : 'none';
+}
+toggleOreSosp();
+
 const HEMI_LIST = <?= json_encode($hemiList) ?>;
 
 async function apriDettaglioAdmin(id) {

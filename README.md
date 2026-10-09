@@ -74,3 +74,10 @@ In `config.php`, imposta `WA_ENABLED` a `true` e inserisci le credenziali Meta C
 
 ## Configurazione (repository)
 `config.php` contiene credenziali e **non è versionato**. Copia `config.example.php` in `config.php` e inserisci i tuoi dati (DB e token WhatsApp).
+
+## Disponibilità HEMI, saloni e assegnazione (novità)
+- **Sospensioni HEMI** (`appuntamenti_admin.php`): periodi dal/al a giorni interi oppure solo alcune ore.
+- **Giorni di disponibilità** (`accounts.php`, ruolo HEMI): checkbox Dom–Sab; nessun giorno selezionato = nessuna restrizione.
+- **Nuovo appuntamento**: ricerca salone per codice/nome (anagrafica da `data/saloni.csv`, 260 saloni) con possibilità di aggiungerne uno nuovo; scelta HEMI filtrata per area d'intervento + zone dell'HM2I. Prima del salvataggio si verifica giorno, sospensioni e sovrapposizioni; se non disponibile compare in rosso *"HEMI non disponibile , selezionare altro HEMI o altro giorno"* e l'appuntamento non viene salvato. Se OK resta "da approvare" (giallo).
+
+**Aggiornamento di un'installazione esistente:** carica i file nuovi (inclusa la cartella `data/`) ed esegui di nuovo `install.php` (crea le nuove tabelle, aggiunge `appuntamenti.salone_id`, importa i saloni; è idempotente e non tocca i dati esistenti), poi eliminalo.

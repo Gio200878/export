@@ -37,6 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $zoneIds = $_POST['zone'] ?? [];
         $areeIds = $_POST['aree'] ?? [];
         $hm2iIds = $_POST['hm2i_collegati'] ?? [];
+        $giorniIds = array_values(array_unique(array_filter(
+            array_map('intval', $_POST['giorni'] ?? []), fn($g) => $g >= 0 && $g <= 6
+        )));
 
         if (!$nome || !$cognome || !$ruolo || !$email || !$login) {
             $errore = 'Compila tutti i campi obbligatori.';
@@ -84,6 +87,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         sync_multi('account_area', 'area_id', $id, []);
                     }
+                    // Giorni di disponibilità settimanale (solo HEMI; 0=dom ... 6=sab)
+                    db()->prepare('DELETE FROM hemi_giorni WHERE account_id = ?')->execute([$id]);
+                    if ($ruolo === 'hemi') {
+                        $stmtG = db()->prepare('INSERT INTO hemi_giorni (account_id, giorno) VALUES (?, ?)');
+                        foreach ($giorniIds as $g) $stmtG->execute([$id, $g]);
+                    }
                     // Collegamento HM2I per sector manager
                     if ($ruolo === 'sector_manager') {
                         sync_multi('sector_hm2i', 'hm2i_id', $id, $hm2iIds); // nota: account_id qui è il sector manager
@@ -110,6 +119,10 @@ foreach (db()->query('SELECT account_id, zona_id FROM account_zone')->fetchAll()
 $areaMap = [];
 foreach (db()->query('SELECT account_id, area_id FROM account_area')->fetchAll() as $r) {
     $areaMap[$r['account_id']][] = (int)$r['area_id'];
+}
+$giorniMap = [];
+foreach (db()->query('SELECT account_id, giorno FROM hemi_giorni')->fetchAll() as $r) {
+    $giorniMap[$r['account_id']][] = (int)$r['giorno'];
 }
 $sectorMap = [];
 foreach (db()->query('SELECT sector_manager_id, hm2i_id FROM sector_hm2i')->fetchAll() as $r) {
@@ -147,7 +160,7 @@ $hm2iTutti = db()->query("SELECT id, nome, cognome FROM accounts WHERE ruolo = '
         <td><?= htmlspecialchars($a['email']) ?></td>
         <td><?= htmlspecialchars($a['login']) ?></td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick='apriModificaAccount(<?= json_encode($a) ?>, <?= json_encode($zoneMap[$a['id']] ?? []) ?>, <?= json_encode($areaMap[$a['id']] ?? []) ?>, <?= json_encode($sectorMap[$a['id']] ?? []) ?>)'>Modifica</button>
+          <button class="btn btn-sm btn-secondary" onclick='apriModificaAccount(<?= json_encode($a) ?>, <?= json_encode($zoneMap[$a['id']] ?? []) ?>, <?= json_encode($areaMap[$a['id']] ?? []) ?>, <?= json_encode($sectorMap[$a['id']] ?? []) ?>, <?= json_encode($giorniMap[$a['id']] ?? []) ?>)'>Modifica</button>
           <form method="post" style="display:inline;" onsubmit="return confirm('Eliminare questo account?');">
             <input type="hidden" name="azione" value="elimina">
             <input type="hidden" name="id" value="<?= $a['id'] ?>">
@@ -214,6 +227,15 @@ $hm2iTutti = db()->query("SELECT id, nome, cognome FROM accounts WHERE ruolo = '
         </div>
       </div>
 
+      <div id="blocco-giorni" style="display:none;">
+        <label>Disponibilità giorni della settimana (nessuno selezionato = tutti i giorni)</label>
+        <div class="chips-multi">
+          <?php foreach ([0 => 'Dom', 1 => 'Lun', 2 => 'Mar', 3 => 'Mer', 4 => 'Gio', 5 => 'Ven', 6 => 'Sab'] as $n => $lbl): ?>
+            <label><input type="checkbox" name="giorni[]" value="<?= $n ?>" class="chk-giorno"> <?= $lbl ?></label>
+          <?php endforeach; ?>
+        </div>
+      </div>
+
       <div id="blocco-hm2i-collegati" style="display:none;">
         <label>HM2I collegati (visibili a questo Sector Manager)</label>
         <div class="chips-multi">
@@ -236,11 +258,12 @@ function aggiornaCampiRuolo() {
   const ruolo = document.getElementById('f-ruolo').value;
   document.getElementById('blocco-zone').style.display = ['hemi','hm2i','sector_manager'].includes(ruolo) ? 'block' : 'none';
   document.getElementById('blocco-aree').style.display = ruolo === 'hemi' ? 'block' : 'none';
+  document.getElementById('blocco-giorni').style.display = ruolo === 'hemi' ? 'block' : 'none';
   document.getElementById('blocco-hm2i-collegati').style.display = ruolo === 'sector_manager' ? 'block' : 'none';
 }
 
 function resetChecks() {
-  document.querySelectorAll('.chk-zona, .chk-area, .chk-hm2i').forEach(c => c.checked = false);
+  document.querySelectorAll('.chk-zona, .chk-area, .chk-hm2i, .chk-giorno').forEach(c => c.checked = false);
 }
 
 function apriNuovoAccount() {
@@ -255,7 +278,7 @@ function apriNuovoAccount() {
   document.getElementById('modal-account').classList.add('open');
 }
 
-function apriModificaAccount(acc, zoneIds, areaIds, hm2iIds) {
+function apriModificaAccount(acc, zoneIds, areaIds, hm2iIds, giorniIds) {
   document.getElementById('modal-account-title').textContent = 'Modifica account';
   document.getElementById('f-azione').value = 'modifica';
   document.getElementById('f-id').value = acc.id;
@@ -274,6 +297,7 @@ function apriModificaAccount(acc, zoneIds, areaIds, hm2iIds) {
   resetChecks();
   zoneIds.forEach(id => { const el = document.querySelector(`.chk-zona[value="${id}"]`); if (el) el.checked = true; });
   areaIds.forEach(id => { const el = document.querySelector(`.chk-area[value="${id}"]`); if (el) el.checked = true; });
+  (giorniIds || []).forEach(g => { const el = document.querySelector(`.chk-giorno[value="${g}"]`); if (el) el.checked = true; });
   hm2iIds.forEach(id => { const el = document.querySelector(`.chk-hm2i[value="${id}"]`); if (el) el.checked = true; });
 
   aggiornaCampiRuolo();

@@ -7,6 +7,7 @@ let vistaData = new Date();
 let opzioniCache = { aree: [], zone: [] };
 let hm2iCache = [];
 let appuntamentiCache = [];
+let saloniCache = [];
 
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 const GIORNI = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
@@ -156,7 +157,104 @@ async function renderCalendario() {
 // ---------------------------------------------------------
 // MODALE: nuovo appuntamento
 // ---------------------------------------------------------
-function apriNuovo(dataISO) {
+async function caricaSaloni() {
+  if (saloniCache.length) return;
+  const res = await fetch('api.php?action=get_saloni');
+  const data = await res.json();
+  if (data.ok) saloniCache = data.saloni;
+}
+
+function etichettaSalone(s) {
+  return (s.codice ? s.codice + ' - ' : '') + s.nome;
+}
+
+function escHtml(t) {
+  return String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function aggiornaDatalistSaloni() {
+  document.getElementById('lista-saloni').innerHTML =
+    saloniCache.map(s => `<option value="${escHtml(etichettaSalone(s))}"></option>`).join('');
+}
+
+// Collega il campo di ricerca salone (codice o nome) a salone_id / salone
+function selezionaSaloneDaTesto() {
+  const txt = document.getElementById('salone-cerca').value.trim().toLowerCase();
+  const s = saloniCache.find(x => etichettaSalone(x).toLowerCase() === txt);
+  document.querySelector('[name=salone_id]').value = s ? s.id : '';
+  document.querySelector('[name=salone]').value = s ? s.nome : '';
+}
+
+async function salvaNuovoSalone() {
+  const err = document.getElementById('nuovo-salone-errore');
+  err.style.display = 'none';
+  const payload = {
+    codice: document.getElementById('ns-codice').value,
+    nome: document.getElementById('ns-nome').value,
+    prov: document.getElementById('ns-prov').value,
+  };
+  const res = await fetch('api.php?action=crea_salone', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!data.ok) {
+    err.textContent = data.error || 'Errore nel salvataggio del salone.';
+    err.style.display = 'block';
+    return;
+  }
+  saloniCache.push(data.salone);
+  saloniCache.sort((a, b) => a.nome.localeCompare(b.nome));
+  aggiornaDatalistSaloni();
+  document.getElementById('salone-cerca').value = etichettaSalone(data.salone);
+  selezionaSaloneDaTesto();
+  document.getElementById('box-nuovo-salone').style.display = 'none';
+  ['ns-codice', 'ns-nome', 'ns-prov'].forEach(id => document.getElementById(id).value = '');
+}
+
+function getHm2iFormValue() {
+  const el = document.querySelector('#form-nuovo-appuntamento [name=hm2i_id]');
+  return el ? el.value : '';
+}
+
+// Ricarica i HEMI compatibili con area d'intervento + zone dell'HM2I richiedente
+async function aggiornaListaHemi() {
+  const sel = document.getElementById('hemi-select');
+  const areaId = document.querySelector('#form-nuovo-appuntamento [name=area_id]').value;
+  const hm2iId = getHm2iFormValue();
+  const precedente = sel.value;
+  sel.innerHTML = '<option value="">-- da assegnare --</option>';
+  if (areaId && hm2iId) {
+    const res = await fetch(`api.php?action=get_hemi_per_area&area_id=${areaId}&hm2i_id=${hm2iId}`);
+    const data = await res.json();
+    if (data.ok) {
+      data.hemi.forEach(h => sel.append(new Option(h.cognome + ' ' + h.nome, h.id)));
+      if (data.hemi.some(h => String(h.id) === precedente)) sel.value = precedente;
+    }
+  }
+  verificaDisponibilitaHemi();
+}
+
+// Controllo in tempo reale della disponibilità (il controllo definitivo avviene comunque lato server al salvataggio)
+async function verificaDisponibilitaHemi() {
+  const avviso = document.getElementById('hemi-non-disponibile');
+  avviso.style.display = 'none';
+  const f = document.getElementById('form-nuovo-appuntamento');
+  const hemiId = f.hemi_id.value;
+  if (!hemiId || !f.data_appuntamento.value || !f.ora_inizio.value || !f.ora_fine.value) return;
+  const p = new URLSearchParams({
+    action: 'check_disponibilita', hemi_id: hemiId, data: f.data_appuntamento.value,
+    ora_inizio: f.ora_inizio.value, ora_fine: f.ora_fine.value,
+  });
+  const res = await fetch('api.php?' + p.toString());
+  const data = await res.json();
+  if (data.ok && !data.disponibile) {
+    avviso.textContent = data.messaggio;
+    avviso.style.display = 'block';
+  }
+}
+
+async function apriNuovo(dataISO) {
+  await caricaSaloni();
   document.getElementById('modal-title').textContent = 'Nuovo appuntamento';
 
   let opzioniHm2i = '';
@@ -174,12 +272,33 @@ function apriNuovo(dataISO) {
       <label>Area d'intervento</label>
       <select name="area_id" required>${opzioniAree}</select>
 
+      <label>HEMI (in base ad area d'intervento e zona dell'HM2I)</label>
+      <select name="hemi_id" id="hemi-select"><option value="">-- da assegnare --</option></select>
+      <div id="hemi-non-disponibile" style="display:none;color:#b04a4a;font-weight:700;margin:4px 0 8px;"></div>
+
       <label>HM2I</label>
       <select name="hm2i_id" required ${CURRENT_ROLE === 'hm2i' ? 'disabled' : ''}>${opzioniHm2i}</select>
       ${CURRENT_ROLE === 'hm2i' ? `<input type="hidden" name="hm2i_id" value="${CURRENT_USER_ID}">` : ''}
 
-      <label>Salone</label>
-      <input type="text" name="salone" required>
+      <label>Salone (codice o nome)</label>
+      <input type="text" id="salone-cerca" list="lista-saloni" placeholder="Cerca per codice o nome..." autocomplete="off" required>
+      <datalist id="lista-saloni"></datalist>
+      <input type="hidden" name="salone_id">
+      <input type="hidden" name="salone">
+      <a href="#" id="link-nuovo-salone" style="font-size:12px;">+ Nuovo salone</a>
+      <div id="box-nuovo-salone" style="display:none;border:1px solid var(--border, #ddd);border-radius:6px;padding:10px;margin:6px 0;">
+        <div class="row">
+          <div><label>Codice</label><input type="text" id="ns-codice" maxlength="20"></div>
+          <div><label>Prov.</label><input type="text" id="ns-prov" maxlength="5"></div>
+        </div>
+        <label>Nome salone</label>
+        <input type="text" id="ns-nome" maxlength="200">
+        <div id="nuovo-salone-errore" class="alert alert-error" style="display:none;"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('box-nuovo-salone').style.display='none'">Annulla</button>
+          <button type="button" class="btn btn-primary" onclick="salvaNuovoSalone()">Aggiungi salone</button>
+        </div>
+      </div>
 
       <label>Indirizzo</label>
       <input type="text" name="indirizzo" required>
@@ -224,7 +343,21 @@ function apriNuovo(dataISO) {
     </form>
   `;
 
-  document.getElementById('form-nuovo-appuntamento').addEventListener('submit', salvaNuovoAppuntamento);
+  const formNuovo = document.getElementById('form-nuovo-appuntamento');
+  formNuovo.addEventListener('submit', salvaNuovoAppuntamento);
+  aggiornaDatalistSaloni();
+  document.getElementById('salone-cerca').addEventListener('input', selezionaSaloneDaTesto);
+  document.getElementById('link-nuovo-salone').addEventListener('click', (ev) => {
+    ev.preventDefault();
+    document.getElementById('box-nuovo-salone').style.display = 'block';
+  });
+  ['area_id', 'hm2i_id'].forEach(n => {
+    const el = formNuovo.querySelector(`[name=${n}]`);
+    if (el) el.addEventListener('change', aggiornaListaHemi);
+  });
+  ['hemi_id', 'data_appuntamento', 'ora_inizio', 'ora_fine'].forEach(n =>
+    formNuovo[n].addEventListener('change', verificaDisponibilitaHemi));
+  aggiornaListaHemi();
   document.getElementById('modal-appuntamento').classList.add('open');
 }
 
@@ -233,6 +366,13 @@ async function salvaNuovoAppuntamento(ev) {
   const form = ev.target;
   const fd = new FormData(form);
   const payload = Object.fromEntries(fd.entries());
+
+  if (!payload.salone_id) {
+    const errEl = document.getElementById('form-errore');
+    errEl.textContent = 'Seleziona un salone dall\'elenco oppure aggiungine uno nuovo.';
+    errEl.style.display = 'block';
+    return;
+  }
 
   const res = await fetch('api.php?action=crea_appuntamento', {
     method: 'POST',
@@ -244,6 +384,7 @@ async function salvaNuovoAppuntamento(ev) {
     const errEl = document.getElementById('form-errore');
     errEl.textContent = data.error || 'Errore nel salvataggio.';
     errEl.style.display = 'block';
+    errEl.style.fontWeight = '700';
     return;
   }
   chiudiModale();

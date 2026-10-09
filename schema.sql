@@ -83,6 +83,45 @@ CREATE TABLE IF NOT EXISTS sector_hm2i (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
+-- ANAGRAFICA SALONI (codice + nome), caricata da data/saloni.csv da install.php
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS saloni (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codice VARCHAR(20) NULL UNIQUE,
+    nome VARCHAR(200) NOT NULL,
+    prov VARCHAR(5) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- DISPONIBILITA' HEMI: giorni della settimana lavorabili (0=dom ... 6=sab)
+-- Nessuna riga = nessuna restrizione (tutti i giorni)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS hemi_giorni (
+    account_id INT NOT NULL,
+    giorno TINYINT NOT NULL,
+    PRIMARY KEY (account_id, giorno),
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- SOSPENSIONI HEMI: giorni interi (ora_inizio/ora_fine NULL) oppure solo alcune ore
+-- per ogni giorno del periodo data_inizio..data_fine
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS hemi_sospensioni (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    hemi_id INT NOT NULL,
+    data_inizio DATE NOT NULL,
+    data_fine DATE NOT NULL,
+    ora_inizio TIME NULL,
+    ora_fine TIME NULL,
+    motivo VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (hemi_id) REFERENCES accounts(id) ON DELETE CASCADE,
+    INDEX idx_hemi_date (hemi_id, data_inizio, data_fine)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
 -- APPUNTAMENTI
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS appuntamenti (
@@ -90,6 +129,7 @@ CREATE TABLE IF NOT EXISTS appuntamenti (
     area_id INT NOT NULL,
     hm2i_id INT NOT NULL,             -- l'agente HM2I titolare dell'appuntamento
     hemi_id INT NULL,                 -- l'educator assegnato (se già noto)
+    salone_id INT NULL,               -- salone dall'anagrafica (tabella saloni)
     salone VARCHAR(200) NOT NULL,
     indirizzo VARCHAR(255) NOT NULL,
     telefono VARCHAR(30) NULL,

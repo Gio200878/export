@@ -61,6 +61,56 @@ switch ($action) {
         break;
 
     // -----------------------------------------------------------
+    // Anagrafica saloni + inserimento nuovo salone
+    // -----------------------------------------------------------
+    case 'get_saloni':
+        json_out(['ok' => true, 'saloni' => get_saloni()]);
+        break;
+
+    case 'crea_salone':
+        if (!in_array(current_user_role(), ['admin', 'sector_manager', 'hm2i'], true)) {
+            json_out(['ok' => false, 'error' => 'Non autorizzato.'], 403);
+        }
+        $d = input();
+        $nome = trim($d['nome'] ?? '');
+        $codice = trim($d['codice'] ?? '');
+        $prov = strtoupper(trim($d['prov'] ?? ''));
+        if ($nome === '') json_out(['ok' => false, 'error' => 'Il nome del salone è obbligatorio.'], 400);
+        if ($codice !== '') {
+            $stmt = db()->prepare('SELECT 1 FROM saloni WHERE codice = ?');
+            $stmt->execute([$codice]);
+            if ($stmt->fetchColumn()) json_out(['ok' => false, 'error' => 'Esiste già un salone con questo codice.'], 409);
+        }
+        db()->prepare('INSERT INTO saloni (codice, nome, prov) VALUES (?, ?, ?)')
+            ->execute([$codice ?: null, $nome, $prov ?: null]);
+        $id = (int)db()->lastInsertId();
+        json_out(['ok' => true, 'salone' => ['id' => $id, 'codice' => $codice ?: null, 'nome' => $nome, 'prov' => $prov ?: null]]);
+        break;
+
+    // -----------------------------------------------------------
+    // HEMI selezionabili per area d'intervento + zone dell'HM2I
+    // -----------------------------------------------------------
+    case 'get_hemi_per_area':
+        $areaId = (int)($_GET['area_id'] ?? 0);
+        $hm2iId = (int)($_GET['hm2i_id'] ?? 0);
+        if (!$areaId || !$hm2iId) json_out(['ok' => true, 'hemi' => []]);
+        json_out(['ok' => true, 'hemi' => get_hemi_per_area_e_hm2i($areaId, $hm2iId)]);
+        break;
+
+    // -----------------------------------------------------------
+    // Verifica disponibilità HEMI (usata anche in tempo reale dalla form)
+    // -----------------------------------------------------------
+    case 'check_disponibilita':
+        $hemiId = (int)($_GET['hemi_id'] ?? 0);
+        $data = $_GET['data'] ?? '';
+        $oi = $_GET['ora_inizio'] ?? '';
+        $of = $_GET['ora_fine'] ?? '';
+        if (!$hemiId || !$data || !$oi || !$of) json_out(['ok' => true, 'disponibile' => true]);
+        json_out(['ok' => true, 'disponibile' => hemi_disponibile($hemiId, $data, $oi, $of),
+                  'messaggio' => MSG_HEMI_NON_DISPONIBILE]);
+        break;
+
+    // -----------------------------------------------------------
     // Crea un nuovo appuntamento
     // -----------------------------------------------------------
     case 'crea_appuntamento':
@@ -82,17 +132,31 @@ switch ($action) {
             json_out(['ok' => false, 'error' => "L'ora di fine deve essere successiva all'ora di inizio."], 400);
         }
 
+        // HEMI scelto (facoltativo): deve essere compatibile con area/zona e disponibile
+        $hemiId = (int)($d['hemi_id'] ?? 0) ?: null;
+        if ($hemiId) {
+            $ammessi = array_column(get_hemi_per_area_e_hm2i((int)$d['area_id'], $hm2iId), 'id');
+            if (!in_array($hemiId, array_map('intval', $ammessi), true)) {
+                json_out(['ok' => false, 'error' => 'HEMI non valido per l\'area e la zona selezionate.'], 400);
+            }
+            if (!hemi_disponibile($hemiId, $d['data_appuntamento'], $d['ora_inizio'], $d['ora_fine'])) {
+                json_out(['ok' => false, 'error' => MSG_HEMI_NON_DISPONIBILE], 409);
+            }
+        }
+        $saloneId = (int)($d['salone_id'] ?? 0) ?: null;
+
+        // Lo stato resta "da approvare" (giallo) per chi non è admin
         $stato = stato_iniziale_per_ruolo();
 
         $stmt = db()->prepare(
             'INSERT INTO appuntamenti
-                (area_id, hm2i_id, salone, indirizzo, telefono, ztl, note, data_appuntamento, ora_inizio, ora_fine, stato, creato_da, approvato_da, approvato_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+                (area_id, hm2i_id, hemi_id, salone_id, salone, indirizzo, telefono, ztl, note, data_appuntamento, ora_inizio, ora_fine, stato, creato_da, approvato_da, approvato_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
         );
         $approvatoDa = $stato === 'approvato' ? current_user_id() : null;
         $approvatoAt = $stato === 'approvato' ? date('Y-m-d H:i:s') : null;
         $stmt->execute([
-            $d['area_id'], $hm2iId, $d['salone'], $d['indirizzo'],
+            $d['area_id'], $hm2iId, $hemiId, $saloneId, $d['salone'], $d['indirizzo'],
             $d['telefono'] ?? null, ($d['ztl'] ?? 'no') === 'si' ? 'si' : 'no',
             $d['note'] ?? null, $d['data_appuntamento'], $d['ora_inizio'], $d['ora_fine'],
             $stato, current_user_id(), $approvatoDa, $approvatoAt,

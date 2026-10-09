@@ -163,3 +163,84 @@ function get_appuntamenti(string $dataInizio, string $dataFine, array $filtri = 
 
     return $rows;
 }
+
+// ============================================================
+// DISPONIBILITA' HEMI
+// ============================================================
+
+const MSG_HEMI_NON_DISPONIBILE = 'HEMI non disponibile , selezionare altro HEMI o altro giorno';
+
+/**
+ * Giorni della settimana lavorabili da un HEMI (0=dom ... 6=sab).
+ * Nessuna riga configurata = nessuna restrizione (tutti i giorni).
+ */
+function get_giorni_hemi(int $hemiId): array {
+    $stmt = db()->prepare('SELECT giorno FROM hemi_giorni WHERE account_id = ?');
+    $stmt->execute([$hemiId]);
+    return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+}
+
+/**
+ * Verifica se un HEMI è disponibile in una data/fascia oraria.
+ * Controlla: giorno della settimana, sospensioni (giorni interi o ore), appuntamenti già presenti.
+ *
+ * @param int|null $escludiAppId appuntamento da ignorare (in caso di modifica)
+ */
+function hemi_disponibile(int $hemiId, string $data, string $oraInizio, string $oraFine, ?int $escludiAppId = null): bool {
+    $ts = strtotime($data);
+    if ($ts === false) return false;
+
+    // 1. Giorno della settimana
+    $giorni = get_giorni_hemi($hemiId);
+    if (!empty($giorni) && !in_array((int)date('w', $ts), $giorni, true)) return false;
+
+    // 2. Sospensioni: giorno intero (ore NULL) oppure sovrapposizione oraria
+    $stmt = db()->prepare(
+        'SELECT 1 FROM hemi_sospensioni
+         WHERE hemi_id = ? AND ? BETWEEN data_inizio AND data_fine
+           AND (ora_inizio IS NULL OR ora_fine IS NULL OR (ora_inizio < ? AND ora_fine > ?))
+         LIMIT 1'
+    );
+    $stmt->execute([$hemiId, $data, $oraFine, $oraInizio]);
+    if ($stmt->fetchColumn()) return false;
+
+    // 3. Appuntamenti già assegnati nella stessa fascia (esclusi i rifiutati)
+    $sql = "SELECT 1 FROM appuntamenti
+            WHERE hemi_id = ? AND data_appuntamento = ? AND stato <> 'rifiutato'
+              AND ora_inizio < ? AND ora_fine > ?";
+    $params = [$hemiId, $data, $oraFine, $oraInizio];
+    if ($escludiAppId) { $sql .= ' AND id <> ?'; $params[] = $escludiAppId; }
+    $stmt = db()->prepare($sql . ' LIMIT 1');
+    $stmt->execute($params);
+    return !$stmt->fetchColumn();
+}
+
+/**
+ * HEMI selezionabili per area d'intervento e zone dell'HM2I richiedente.
+ * Se l'HM2I non ha zone configurate non si filtra per zona.
+ */
+function get_hemi_per_area_e_hm2i(int $areaId, int $hm2iId): array {
+    $stmt = db()->prepare('SELECT zona_id FROM account_zone WHERE account_id = ?');
+    $stmt->execute([$hm2iId]);
+    $zone = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+    $sql = "SELECT DISTINCT a.id, a.nome, a.cognome FROM accounts a
+            JOIN account_area aa ON aa.account_id = a.id AND aa.area_id = ?
+            WHERE a.ruolo = 'hemi' AND a.attivo = 1";
+    $params = [$areaId];
+    if (!empty($zone)) {
+        $in = implode(',', array_fill(0, count($zone), '?'));
+        $sql .= " AND a.id IN (SELECT account_id FROM account_zone WHERE zona_id IN ($in))";
+        $params = array_merge($params, $zone);
+    }
+    $stmt = db()->prepare($sql . ' ORDER BY a.cognome, a.nome');
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Anagrafica saloni (codice + nome) per la form di inserimento appuntamento.
+ */
+function get_saloni(): array {
+    return db()->query('SELECT id, codice, nome, prov FROM saloni ORDER BY nome')->fetchAll();
+}
