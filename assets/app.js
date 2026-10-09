@@ -157,11 +157,18 @@ async function renderCalendario() {
 // ---------------------------------------------------------
 // MODALE: nuovo appuntamento
 // ---------------------------------------------------------
-async function caricaSaloni() {
-  if (saloniCache.length) return;
-  const res = await fetch('api.php?action=get_saloni');
+// Carica i saloni dell'HM2I indicato (il server limita comunque ai saloni visibili all'utente)
+async function caricaSaloni(hm2iId) {
+  const res = await fetch('api.php?action=get_saloni' + (hm2iId ? '&hm2i_id=' + encodeURIComponent(hm2iId) : ''));
   const data = await res.json();
-  if (data.ok) saloniCache = data.saloni;
+  saloniCache = data.ok ? data.saloni : [];
+}
+
+async function ricaricaSaloniPerHm2i() {
+  await caricaSaloni(getHm2iFormValue());
+  aggiornaDatalistSaloni();
+  document.getElementById('salone-cerca').value = '';
+  selezionaSaloneDaTesto();
 }
 
 function etichettaSalone(s) {
@@ -192,6 +199,7 @@ async function salvaNuovoSalone() {
     codice: document.getElementById('ns-codice').value,
     nome: document.getElementById('ns-nome').value,
     prov: document.getElementById('ns-prov').value,
+    hm2i_id: getHm2iFormValue(),
   };
   const res = await fetch('api.php?action=crea_salone', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -254,7 +262,7 @@ async function verificaDisponibilitaHemi() {
 }
 
 async function apriNuovo(dataISO) {
-  await caricaSaloni();
+  await caricaSaloni(CURRENT_ROLE === 'hm2i' ? CURRENT_USER_ID : (hm2iCache[0] ? hm2iCache[0].id : null));
   document.getElementById('modal-title').textContent = 'Nuovo appuntamento';
 
   let opzioniHm2i = '';
@@ -351,6 +359,8 @@ async function apriNuovo(dataISO) {
     ev.preventDefault();
     document.getElementById('box-nuovo-salone').style.display = 'block';
   });
+  const selHm2i = formNuovo.querySelector('select[name=hm2i_id]');
+  if (selHm2i) selHm2i.addEventListener('change', ricaricaSaloniPerHm2i);
   ['area_id', 'hm2i_id'].forEach(n => {
     const el = formNuovo.querySelector(`[name=${n}]`);
     if (el) el.addEventListener('change', aggiornaListaHemi);
@@ -423,14 +433,65 @@ async function apriDettaglio(id) {
       <p>HM2I: ${a.hm2i_cognome} ${a.hm2i_nome}</p>
       ${a.hemi_nome ? `<p>HEMI assegnato: ${a.hemi_cognome} ${a.hemi_nome}</p>` : ''}
       ${a.note ? `<p>Note: ${a.note}</p>` : ''}
-      ${(CURRENT_ROLE === 'admin' && (a.compenso || a.rimborso_spese)) ? `<p>Compenso: ${a.compenso ?? '-'} € | Rimborso: ${a.rimborso_spese ?? '-'} €</p>` : ''}
+      ${((CURRENT_ROLE === 'admin' || CURRENT_ROLE === 'hemi') && (a.compenso || a.rimborso_spese)) ? `<p>Compenso: ${a.compenso ?? '-'} € | Rimborso: ${a.rimborso_spese ?? '-'} €</p>` : ''}
+      ${a.puo_chat && CURRENT_ROLE === 'hemi' ? boxChatHtml(a.id) : ''}
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" onclick="chiudiModale()">Chiudi</button>
       </div>
     `;
+    if (a.puo_chat && CURRENT_ROLE === 'hemi') caricaChat(a.id);
   }
 
   document.getElementById('modal-appuntamento').classList.add('open');
+}
+
+// ---------------------------------------------------------
+// CHAT HEMI -> ADMIN (richieste di informazioni su un appuntamento)
+// ---------------------------------------------------------
+function boxChatHtml(appId) {
+  return `
+    <div class="chatbox">
+      <h4>Richiedi informazioni all'ADMIN</h4>
+      <div class="chat-messaggi" id="chat-messaggi"></div>
+      <div id="chat-errore" class="alert alert-error" style="display:none;"></div>
+      <div class="chat-form">
+        <textarea id="chat-testo" rows="2" maxlength="2000" placeholder="Scrivi qui la tua richiesta..."></textarea>
+        <button type="button" class="btn btn-primary" onclick="inviaChat(${appId})">Invia</button>
+      </div>
+    </div>`;
+}
+
+function renderChat(messaggi, inAttesa) {
+  const box = document.getElementById('chat-messaggi');
+  if (!box) return;
+  box.innerHTML = messaggi.length
+    ? messaggi.map(m => `<div class="chat-msg ${m.mittente_ruolo === 'admin' ? 'admin' : 'mio'}">
+        <div class="chat-meta">${escHtml(m.mittente_ruolo === 'admin' ? 'ADMIN' : m.cognome + ' ' + m.nome)} - ${escHtml(m.created_at)}</div>
+        ${escHtml(m.testo).replace(/\n/g, '<br>')}</div>`).join('')
+    : '<div class="chat-vuoto">Nessun messaggio.</div>';
+  if (inAttesa) box.insertAdjacentHTML('beforeend', '<div class="chat-attesa">In attesa di risposta dall\'ADMIN</div>');
+  box.scrollTop = box.scrollHeight;
+}
+
+async function caricaChat(appId) {
+  const res = await fetch('api.php?action=get_messaggi&appuntamento_id=' + appId);
+  const data = await res.json();
+  if (data.ok) renderChat(data.messaggi, data.in_attesa);
+}
+
+async function inviaChat(appId) {
+  const txt = document.getElementById('chat-testo');
+  const err = document.getElementById('chat-errore');
+  err.style.display = 'none';
+  const res = await fetch('api.php?action=invia_messaggio', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ appuntamento_id: appId, testo: txt.value }),
+  });
+  const data = await res.json();
+  if (!data.ok) { err.textContent = data.error || 'Errore.'; err.style.display = 'block'; return; }
+  txt.value = '';
+  renderChat(data.messaggi, data.in_attesa);
+  renderCalendario(); // l'appuntamento diventa blu finché l'ADMIN non risponde
 }
 
 function chiudiModale() {

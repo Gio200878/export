@@ -37,7 +37,7 @@ switch ($action) {
         ];
         $rows = get_appuntamenti($inizio, $fine, array_filter($filtri, fn($v) => $v !== null && $v !== ''));
         foreach ($rows as &$r) {
-            $r['colore'] = $r['_offuscato'] ? '#999999' : colore_stato($r['stato']);
+            $r['colore'] = $r['_offuscato'] ? '#999999' : (!empty($r['in_attesa']) ? COLORE_IN_ATTESA : colore_stato($r['stato']));
         }
         json_out(['ok' => true, 'appuntamenti' => $rows]);
         break;
@@ -64,7 +64,7 @@ switch ($action) {
     // Anagrafica saloni + inserimento nuovo salone
     // -----------------------------------------------------------
     case 'get_saloni':
-        json_out(['ok' => true, 'saloni' => get_saloni()]);
+        json_out(['ok' => true, 'saloni' => get_saloni(((int)($_GET['hm2i_id'] ?? 0)) ?: null)]);
         break;
 
     case 'crea_salone':
@@ -76,15 +76,20 @@ switch ($action) {
         $codice = trim($d['codice'] ?? '');
         $prov = strtoupper(trim($d['prov'] ?? ''));
         if ($nome === '') json_out(['ok' => false, 'error' => 'Il nome del salone è obbligatorio.'], 400);
+        $hm2iSalone = (int)($d['hm2i_id'] ?? 0);
+        if (current_user_role() === 'hm2i') $hm2iSalone = current_user_id();
+        if (!$hm2iSalone || !can_create_for_hm2i($hm2iSalone)) {
+            json_out(['ok' => false, 'error' => 'Seleziona un HM2I valido per il nuovo salone.'], 400);
+        }
         if ($codice !== '') {
             $stmt = db()->prepare('SELECT 1 FROM saloni WHERE codice = ?');
             $stmt->execute([$codice]);
             if ($stmt->fetchColumn()) json_out(['ok' => false, 'error' => 'Esiste già un salone con questo codice.'], 409);
         }
-        db()->prepare('INSERT INTO saloni (codice, nome, prov) VALUES (?, ?, ?)')
-            ->execute([$codice ?: null, $nome, $prov ?: null]);
+        db()->prepare('INSERT INTO saloni (codice, nome, prov, hm2i_id) VALUES (?, ?, ?, ?)')
+            ->execute([$codice ?: null, $nome, $prov ?: null, $hm2iSalone]);
         $id = (int)db()->lastInsertId();
-        json_out(['ok' => true, 'salone' => ['id' => $id, 'codice' => $codice ?: null, 'nome' => $nome, 'prov' => $prov ?: null]]);
+        json_out(['ok' => true, 'salone' => ['id' => $id, 'codice' => $codice ?: null, 'nome' => $nome, 'prov' => $prov ?: null, 'hm2i_id' => $hm2iSalone]]);
         break;
 
     // -----------------------------------------------------------
@@ -144,6 +149,16 @@ switch ($action) {
             }
         }
         $saloneId = (int)($d['salone_id'] ?? 0) ?: null;
+        if ($saloneId) {
+            // Il salone deve appartenere all'HM2I dell'appuntamento (gli admin possono usare anche saloni senza HM2I)
+            $stmt = db()->prepare('SELECT hm2i_id FROM saloni WHERE id = ?');
+            $stmt->execute([$saloneId]);
+            $rowS = $stmt->fetch();
+            if (!$rowS || ($rowS['hm2i_id'] !== null && (int)$rowS['hm2i_id'] !== $hm2iId)
+                || ($rowS['hm2i_id'] === null && current_user_role() !== 'admin')) {
+                json_out(['ok' => false, 'error' => 'Salone non valido per questo HM2I.'], 403);
+            }
+        }
 
         // Lo stato resta "da approvare" (giallo) per chi non è admin
         $stato = stato_iniziale_per_ruolo();
@@ -188,6 +203,10 @@ switch ($action) {
         $app = $stmt->fetch();
         if (!$app) json_out(['ok' => false, 'error' => 'Appuntamento non trovato.'], 404);
 
+        // L'HEMI non vede appuntamenti altrui, nemmeno come "occupato"
+        if (current_user_role() === 'hemi' && (int)($app['hemi_id'] ?? 0) !== current_user_id()) {
+            json_out(['ok' => false, 'error' => 'Appuntamento non trovato.'], 404);
+        }
         if (!can_view_dettagli($app)) {
             $nomeVisibile = trim(($app['hemi_nome'] ?? '') . ' ' . ($app['hemi_cognome'] ?? '')) ?: trim($app['hm2i_nome'] . ' ' . $app['hm2i_cognome']);
             json_out(['ok' => true, 'appuntamento' => [
@@ -196,7 +215,38 @@ switch ($action) {
             ]]);
         }
         $app['occupato'] = false;
+        $app['in_attesa'] = can_chat_appuntamento($app) && in_attesa_risposta((int)$app['id']);
+        $app['puo_chat'] = can_chat_appuntamento($app);
         json_out(['ok' => true, 'appuntamento' => $app]);
+        break;
+
+    // -----------------------------------------------------------
+    // Chat HEMI <-> ADMIN su un appuntamento
+    // -----------------------------------------------------------
+    case 'get_messaggi':
+    case 'invia_messaggio':
+        $d = $action === 'invia_messaggio' ? input() : $_GET;
+        $appId = (int)($d['appuntamento_id'] ?? 0);
+        $stmt = db()->prepare('SELECT id, hemi_id FROM appuntamenti WHERE id = ?');
+        $stmt->execute([$appId]);
+        $appChat = $stmt->fetch();
+        if (!$appChat || !can_chat_appuntamento($appChat)) {
+            json_out(['ok' => false, 'error' => 'Non autorizzato.'], 403);
+        }
+        if ($action === 'invia_messaggio') {
+            $testo = trim((string)($d['testo'] ?? ''));
+            if ($testo === '') json_out(['ok' => false, 'error' => 'Scrivi un messaggio.'], 400);
+            if (mb_strlen($testo) > 2000) json_out(['ok' => false, 'error' => 'Messaggio troppo lungo (max 2000 caratteri).'], 400);
+            db()->prepare('INSERT INTO messaggi (appuntamento_id, mittente_id, mittente_ruolo, testo) VALUES (?,?,?,?)')
+                ->execute([$appId, current_user_id(), current_user_role(), $testo]);
+        }
+        $stmt = db()->prepare(
+            'SELECT m.id, m.mittente_ruolo, m.testo, m.created_at, a.nome, a.cognome
+             FROM messaggi m JOIN accounts a ON a.id = m.mittente_id
+             WHERE m.appuntamento_id = ? ORDER BY m.id'
+        );
+        $stmt->execute([$appId]);
+        json_out(['ok' => true, 'messaggi' => $stmt->fetchAll(), 'in_attesa' => in_attesa_risposta($appId)]);
         break;
 
     // -----------------------------------------------------------

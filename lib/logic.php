@@ -104,7 +104,8 @@ function get_appuntamenti(string $dataInizio, string $dataFine, array $filtri = 
 
     $sql = "SELECT ap.*, a.nome AS area_nome, a.colore AS area_colore,
                    hm.nome AS hm2i_nome, hm.cognome AS hm2i_cognome,
-                   he.nome AS hemi_nome, he.cognome AS hemi_cognome
+                   he.nome AS hemi_nome, he.cognome AS hemi_cognome,
+                   " . SQL_IN_ATTESA . " AS in_attesa
             FROM appuntamenti ap
             JOIN aree_intervento a ON a.id = ap.area_id
             JOIN accounts hm ON hm.id = ap.hm2i_id
@@ -122,7 +123,9 @@ function get_appuntamenti(string $dataInizio, string $dataFine, array $filtri = 
     } elseif ($role === 'hm2i') {
         // Vede i propri con dettagli + tutti gli altri (mostrati come "occupato" lato frontend)
     } elseif ($role === 'hemi') {
-        // Vede i propri con dettagli + tutti gli altri come "occupato"
+        // L'HEMI vede solo i propri appuntamenti, in chiaro e con tutti i dettagli
+        $sql .= ' AND ap.hemi_id = ?';
+        $params[] = $uid;
     }
 
     // Filtri collegati (menu a tendina)
@@ -159,6 +162,9 @@ function get_appuntamenti(string $dataInizio, string $dataFine, array $filtri = 
         } else {
             $r['_offuscato'] = false;
         }
+        // Il blu "in attesa di risposta" riguarda solo admin e HEMI interessato
+        $r['in_attesa'] = (bool)$r['in_attesa'] && $role !== 'hm2i' && $role !== 'sector_manager'
+            && ($role === 'admin' || (int)$r['hemi_id'] === $uid);
     }
 
     return $rows;
@@ -239,8 +245,60 @@ function get_hemi_per_area_e_hm2i(int $areaId, int $hm2iId): array {
 }
 
 /**
- * Anagrafica saloni (codice + nome) per la form di inserimento appuntamento.
+ * Saloni visibili all'utente corrente, opzionalmente ristretti a un HM2I.
+ * - hm2i: solo i propri saloni
+ * - sector_manager: solo quelli dei suoi HM2I
+ * - admin: tutti (anche senza HM2I assegnato), oppure quelli dell'HM2I richiesto
  */
-function get_saloni(): array {
-    return db()->query('SELECT id, codice, nome, prov FROM saloni ORDER BY nome')->fetchAll();
+function get_saloni(?int $hm2iId = null): array {
+    $role = current_user_role();
+    $sql = 'SELECT id, codice, nome, prov, hm2i_id FROM saloni';
+    $params = [];
+    if ($role === 'admin') {
+        if ($hm2iId) { $sql .= ' WHERE hm2i_id = ?'; $params[] = $hm2iId; }
+    } else {
+        $ids = visible_hm2i_ids();
+        if ($hm2iId) $ids = array_values(array_intersect($ids, [$hm2iId]));
+        if (empty($ids)) return [];
+        $sql .= ' WHERE hm2i_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
+        $params = $ids;
+    }
+    $stmt = db()->prepare($sql . ' ORDER BY nome');
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
+// ============================================================
+// RICHIESTE INFO HEMI -> ADMIN (chat per appuntamento)
+// ============================================================
+
+const COLORE_IN_ATTESA = '#2f6fd6'; // blu: HEMI in attesa di risposta dall'admin
+
+/**
+ * Vero se l'appuntamento ha una richiesta dell'HEMI senza risposta successiva dell'admin.
+ */
+function in_attesa_risposta(int $appId): bool {
+    $stmt = db()->prepare(
+        "SELECT COALESCE(MAX(CASE WHEN mittente_ruolo = 'hemi' THEN id END), 0) >
+                COALESCE(MAX(CASE WHEN mittente_ruolo = 'admin' THEN id END), 0)
+         FROM messaggi WHERE appuntamento_id = ?"
+    );
+    $stmt->execute([$appId]);
+    return (bool)$stmt->fetchColumn();
+}
+
+/**
+ * Condizione SQL (alias ap) per "in attesa di risposta", da usare come colonna calcolata.
+ */
+const SQL_IN_ATTESA =
+    "(COALESCE((SELECT MAX(id) FROM messaggi m WHERE m.appuntamento_id = ap.id AND m.mittente_ruolo = 'hemi'), 0) >
+      COALESCE((SELECT MAX(id) FROM messaggi m WHERE m.appuntamento_id = ap.id AND m.mittente_ruolo = 'admin'), 0))";
+
+/**
+ * L'utente corrente può leggere/scrivere i messaggi di questo appuntamento?
+ */
+function can_chat_appuntamento(array $app): bool {
+    $role = current_user_role();
+    if ($role === 'admin') return true;
+    return $role === 'hemi' && (int)($app['hemi_id'] ?? 0) === current_user_id();
 }

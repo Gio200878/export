@@ -81,3 +81,9 @@ In `config.php`, imposta `WA_ENABLED` a `true` e inserisci le credenziali Meta C
 - **Nuovo appuntamento**: ricerca salone per codice/nome (anagrafica da `data/saloni.csv`, 260 saloni) con possibilità di aggiungerne uno nuovo; scelta HEMI filtrata per area d'intervento + zone dell'HM2I. Prima del salvataggio si verifica giorno, sospensioni e sovrapposizioni; se non disponibile compare in rosso *"HEMI non disponibile , selezionare altro HEMI o altro giorno"* e l'appuntamento non viene salvato. Se OK resta "da approvare" (giallo).
 
 **Aggiornamento di un'installazione esistente:** carica i file nuovi (inclusa la cartella `data/`) ed esegui di nuovo `install.php` (crea le nuove tabelle, aggiunge `appuntamenti.salone_id`, importa i saloni; è idempotente e non tocca i dati esistenti), poi eliminalo.
+
+## HM2I, saloni per HM2I e chat HEMI→ADMIN
+- **Tabella `hm2i`** (da `data/hm2i.csv`, 19 HM2I) + un account per ciascuno: login = email `inizialenome.cognome@monacelliitaly.it`, password di default `Monacelli26` (da cambiare al primo accesso). Le zone dell'account derivano dall'area: NORD → Nord Ovest + Nord Est, CENTRO → Centro, SUD → Sud.
+- **Saloni**: colonna `saloni.hm2i_id`. Nell'inserimento appuntamenti ogni HM2I vede solo i propri saloni (admin/sector manager: quelli dell'HM2I selezionato).
+- **HEMI**: vede solo i propri appuntamenti, in chiaro. Dal dettaglio può scrivere all'ADMIN; l'appuntamento è **blu** (calendario e Gestione Appuntamenti) finché l'ADMIN non risponde, poi torna verde/giallo/rosso.
+- Aggiornamento: ricarica i file ed esegui di nuovo `install.php` (idempotente), poi eliminalo.

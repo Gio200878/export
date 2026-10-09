@@ -53,7 +53,8 @@ $filtri = array_filter([
 
 // Recupera TUTTI gli appuntamenti (nessun limite di intervallo) applicando i filtri
 $sql = "SELECT ap.*, a.nome AS area_nome, hm.nome AS hm2i_nome, hm.cognome AS hm2i_cognome,
-               he.nome AS hemi_nome, he.cognome AS hemi_cognome
+               he.nome AS hemi_nome, he.cognome AS hemi_cognome,
+               " . SQL_IN_ATTESA . " AS in_attesa
         FROM appuntamenti ap
         JOIN aree_intervento a ON a.id = ap.area_id
         JOIN accounts hm ON hm.id = ap.hm2i_id
@@ -134,7 +135,8 @@ $sospensioni = db()->query(
 
 function fmt_data_it($d) { return date('d/m/Y', strtotime($d)); }
 
-function badge_stato_html($stato) {
+function badge_stato_html($stato, $inAttesa = false) {
+    if ($inAttesa) return '<span class="badge badge-blu">Richiesta info</span>';
     $map = ['da_approvare' => ['badge-giallo','Da approvare'], 'approvato' => ['badge-verde','Approvato'], 'rifiutato' => ['badge-rosso','Rifiutato']];
     [$cls, $label] = $map[$stato] ?? ['','?'];
     return "<span class=\"badge $cls\">$label</span>";
@@ -196,10 +198,10 @@ function badge_stato_html($stato) {
     </thead>
     <tbody>
       <?php foreach ($appuntamenti as $a): ?>
-      <tr onclick="apriDettaglioAdmin(<?= $a['id'] ?>)">
+      <tr class="<?= $a['in_attesa'] ? 'in-attesa' : '' ?>" onclick="apriDettaglioAdmin(<?= $a['id'] ?>)">
         <td><?= htmlspecialchars($a['data_appuntamento']) ?></td>
         <td><?= substr($a['ora_inizio'],0,5) ?>-<?= substr($a['ora_fine'],0,5) ?></td>
-        <td><?= badge_stato_html($a['stato']) ?></td>
+        <td><?= badge_stato_html($a['stato'], $a['in_attesa']) ?></td>
         <td><?= htmlspecialchars($a['area_nome']) ?></td>
         <td><?= htmlspecialchars($a['salone']) ?></td>
         <td><?= htmlspecialchars($a['hm2i_cognome'].' '.$a['hm2i_nome']) ?></td>
@@ -358,6 +360,15 @@ async function apriDettaglioAdmin(id) {
         <div><label>Compenso (€)</label><input type="number" step="0.01" name="compenso" value="${a.compenso ?? ''}"></div>
         <div><label>Rimborso spese (€)</label><input type="number" step="0.01" name="rimborso_spese" value="${a.rimborso_spese ?? ''}"></div>
       </div>
+      <div class="chatbox">
+        <h4>Messaggi con l'HEMI ${a.in_attesa ? '<span class="badge badge-blu">in attesa di risposta</span>' : ''}</h4>
+        <div class="chat-messaggi" id="chat-messaggi"></div>
+        <div id="chat-errore" class="alert alert-error" style="display:none;"></div>
+        <div class="chat-form">
+          <textarea id="chat-testo" rows="2" maxlength="2000" placeholder="Rispondi all'HEMI..."></textarea>
+          <button type="button" class="btn btn-primary" onclick="inviaChat(${a.id})">Rispondi</button>
+        </div>
+      </div>
       <div id="admin-errore" class="alert alert-error" style="display:none;"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" onclick="chiudiModaleAdmin()">Chiudi</button>
@@ -387,6 +398,41 @@ async function apriDettaglioAdmin(id) {
   });
 
   document.getElementById('modal-admin').classList.add('open');
+  caricaChat(a.id);
+}
+
+function escHtml(t) {
+  return String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderChat(messaggi) {
+  const box = document.getElementById('chat-messaggi');
+  box.innerHTML = messaggi.length
+    ? messaggi.map(m => `<div class="chat-msg ${m.mittente_ruolo === 'admin' ? 'mio' : 'admin'}">
+        <div class="chat-meta">${escHtml(m.mittente_ruolo === 'admin' ? 'ADMIN' : m.cognome + ' ' + m.nome)} - ${escHtml(m.created_at)}</div>
+        ${escHtml(m.testo).replace(/\n/g, '<br>')}</div>`).join('')
+    : '<div class="chat-vuoto">Nessun messaggio.</div>';
+  box.scrollTop = box.scrollHeight;
+}
+
+async function caricaChat(appId) {
+  const res = await fetch('api.php?action=get_messaggi&appuntamento_id=' + appId);
+  const data = await res.json();
+  if (data.ok) renderChat(data.messaggi);
+}
+
+// Rispondendo, l'appuntamento torna al colore dello stato (verde/giallo/rosso)
+async function inviaChat(appId) {
+  const txt = document.getElementById('chat-testo');
+  const err = document.getElementById('chat-errore');
+  err.style.display = 'none';
+  const res = await fetch('api.php?action=invia_messaggio', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ appuntamento_id: appId, testo: txt.value }),
+  });
+  const data = await res.json();
+  if (!data.ok) { err.textContent = data.error || 'Errore.'; err.style.display = 'block'; return; }
+  location.reload();
 }
 
 async function cambiaStato(id, stato) {

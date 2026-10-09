@@ -83,6 +83,21 @@ CREATE TABLE IF NOT EXISTS sector_hm2i (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
+-- ANAGRAFICA HM2I (da data/hm2i.csv); account_id = account di accesso collegato
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS hm2i (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    codice INT NOT NULL UNIQUE,
+    nome_completo VARCHAR(200) NOT NULL,
+    area VARCHAR(30) NULL,                -- NORD / CENTRO / SUD
+    cognome VARCHAR(100) NOT NULL,
+    nome VARCHAR(100) NOT NULL DEFAULT '',
+    account_id INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
 -- ANAGRAFICA SALONI (codice + nome), caricata da data/saloni.csv da install.php
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS saloni (
@@ -90,7 +105,9 @@ CREATE TABLE IF NOT EXISTS saloni (
     codice VARCHAR(20) NULL UNIQUE,
     nome VARCHAR(200) NOT NULL,
     prov VARCHAR(5) NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    hm2i_id INT NULL,                     -- HM2I (account) titolare del salone
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (hm2i_id) REFERENCES accounts(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
@@ -154,6 +171,22 @@ CREATE TABLE IF NOT EXISTS appuntamenti (
     FOREIGN KEY (approvato_da) REFERENCES accounts(id),
     INDEX idx_data (data_appuntamento),
     INDEX idx_stato (stato)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- MESSAGGI HEMI <-> ADMIN (richieste di informazioni su un appuntamento)
+-- Un appuntamento e' "in attesa di risposta" finche' l'ultimo messaggio e' dell'HEMI
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS messaggi (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    appuntamento_id INT NOT NULL,
+    mittente_id INT NOT NULL,
+    mittente_ruolo VARCHAR(20) NOT NULL,
+    testo TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (appuntamento_id) REFERENCES appuntamenti(id) ON DELETE CASCADE,
+    FOREIGN KEY (mittente_id) REFERENCES accounts(id) ON DELETE CASCADE,
+    INDEX idx_app (appuntamento_id, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
