@@ -379,7 +379,11 @@ async function apriDettaglioAdmin(id) {
       method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
     });
     const d = await res.json();
-    if (d.ok) location.reload();
+    if (d.ok) { location.reload(); return; }
+    const errEl = document.getElementById('admin-errore');
+    errEl.textContent = d.error || 'Errore.';
+    errEl.style.display = 'block';
+    errEl.style.fontWeight = '700';
   });
 
   document.getElementById('modal-admin').classList.add('open');
@@ -408,6 +412,7 @@ async function cambiaStato(id, stato) {
     const errEl = document.getElementById('admin-errore');
     errEl.textContent = d.error || 'Errore.';
     errEl.style.display = 'block';
+    errEl.style.fontWeight = '700';
   }
 }
 

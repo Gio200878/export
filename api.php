@@ -215,6 +215,16 @@ switch ($action) {
         if ($nuovoStato === 'approvato' && !$hemiId) {
             json_out(['ok' => false, 'error' => 'Seleziona un HEMI per approvare l\'appuntamento.'], 400);
         }
+        // Approvando con un HEMI: verifica disponibilità su data/orario registrati (escluso questo appuntamento)
+        if ($nuovoStato === 'approvato' && $hemiId) {
+            $stmtCur = db()->prepare('SELECT data_appuntamento, ora_inizio, ora_fine FROM appuntamenti WHERE id = ?');
+            $stmtCur->execute([$id]);
+            $cur = $stmtCur->fetch();
+            if (!$cur) json_out(['ok' => false, 'error' => 'Appuntamento non trovato.'], 404);
+            if (!hemi_disponibile($hemiId, $cur['data_appuntamento'], $cur['ora_inizio'], $cur['ora_fine'], $id)) {
+                json_out(['ok' => false, 'error' => MSG_HEMI_NON_DISPONIBILE], 409);
+            }
+        }
         $compenso = ($d['compenso'] ?? '') !== '' ? $d['compenso'] : null;
         $rimborso = ($d['rimborso_spese'] ?? '') !== '' ? $d['rimborso_spese'] : null;
 
@@ -247,6 +257,14 @@ switch ($action) {
         if (current_user_role() !== 'admin') json_out(['ok' => false, 'error' => 'Solo admin.'], 403);
         $d = input();
         $id = (int)($d['id'] ?? 0);
+        // Con un HEMI assegnato, verifica disponibilità sui nuovi data/orario (escluso questo appuntamento)
+        $hemiMod = (int)($d['hemi_id'] ?? 0);
+        if ($d['ora_fine'] <= $d['ora_inizio']) {
+            json_out(['ok' => false, 'error' => "L'ora di fine deve essere successiva all'ora di inizio."], 400);
+        }
+        if ($hemiMod && !hemi_disponibile($hemiMod, $d['data_appuntamento'], $d['ora_inizio'], $d['ora_fine'], $id)) {
+            json_out(['ok' => false, 'error' => MSG_HEMI_NON_DISPONIBILE], 409);
+        }
         $stmt = db()->prepare(
             'UPDATE appuntamenti SET data_appuntamento=?, ora_inizio=?, ora_fine=?, compenso=?, rimborso_spese=?, hemi_id=? WHERE id=?'
         );
