@@ -1,0 +1,237 @@
+:root {
+  --tortora: #8a7968;
+  --tortora-dark: #5f5347;
+  --tortora-light: #e9e3da;
+  --bg: #faf8f5;
+  --card-bg: #ffffff;
+  --text: #3a352f;
+  --text-light: #79726a;
+  --border: #e0d9cd;
+  --giallo: #d6a726;
+  --verde: #4a8c5f;
+  --rosso: #b04a4a;
+  --radius: 10px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Karla', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1, h2, h3 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 600;
+  color: var(--tortora-dark);
+}
+
+a { color: var(--tortora-dark); }
+
+/* ---------- LOGIN ---------- */
+.login-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(135deg, var(--tortora-light), var(--bg));
+}
+.login-box {
+  background: var(--card-bg);
+  padding: 40px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  width: 340px;
+  text-align: center;
+}
+.login-box h1 { margin-bottom: 4px; font-size: 28px; }
+.login-box .subtitle { color: var(--text-light); margin-top: 0; margin-bottom: 24px; font-size: 14px; }
+.login-box form { text-align: left; }
+.login-box label { font-size: 13px; color: var(--text-light); display: block; margin: 12px 0 4px; }
+.login-box input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+
+/* ---------- LAYOUT APP ---------- */
+.app-header {
+  background: var(--tortora-dark);
+  color: white;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.app-header h1 { color: white; font-size: 22px; margin: 0; }
+.app-header nav a {
+  color: white;
+  text-decoration: none;
+  margin-left: 18px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+.app-header nav a:hover { opacity: 1; text-decoration: underline; }
+.app-header .user-info { font-size: 13px; opacity: 0.85; }
+
+.app-layout {
+  display: flex;
+  min-height: calc(100vh - 56px);
+}
+
+.sidebar {
+  width: 260px;
+  background: var(--card-bg);
+  border-right: 1px solid var(--border);
+  padding: 20px;
+  flex-shrink: 0;
+}
+.sidebar h3 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-light); margin-bottom: 12px; }
+.sidebar label { display: block; font-size: 13px; color: var(--text-light); margin: 14px 0 4px; }
+.sidebar select, .sidebar input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px 24px;
+  overflow-x: auto;
+}
+
+/* ---------- CALENDARIO ---------- */
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.calendar-toolbar .nav-buttons button {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.calendar-toolbar .nav-buttons button:hover { background: var(--tortora-light); }
+.calendar-toolbar h2 { margin: 0; font-size: 24px; }
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.calendar-weekday {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-light);
+  text-transform: uppercase;
+  padding: 6px 0;
+}
+.calendar-day {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 110px;
+  padding: 6px;
+  cursor: pointer;
+  position: relative;
+  transition: box-shadow 0.15s;
+}
+.calendar-day:hover { box-shadow: var(--shadow); }
+.calendar-day.other-month { background: #f3f1ec; color: var(--text-light); }
+.calendar-day.today { border: 2px solid var(--tortora); }
+.calendar-day .day-number { font-size: 13px; font-weight: 700; }
+
+.appt-chip {
+  display: block;
+  font-size: 11px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: white;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.appt-chip.occupato { background: #999 !important; font-style: italic; }
+
+/* ---------- MODALI ---------- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: white;
+  border-radius: var(--radius);
+  padding: 28px;
+  width: 480px;
+  max-width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+.modal-box h2 { margin-top: 0; }
+.modal-box label { display: block; font-size: 13px; color: var(--text-light); margin: 12px 0 4px; }
+.modal-box input, .modal-box select, .modal-box textarea {
+  width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px;
+}
+.modal-box .row { display: flex; gap: 12px; }
+.modal-box .row > div { flex: 1; }
+.modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ---------- BOTTONI ---------- */
+.btn {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-primary { background: var(--tortora-dark); color: white; }
+.btn-primary:hover { background: var(--tortora); }
+.btn-secondary { background: var(--tortora-light); color: var(--tortora-dark); }
+.btn-approve { background: var(--verde); color: white; }
+.btn-reject { background: var(--rosso); color: white; }
+.btn-block { width: 100%; margin-top: 18px; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- BADGE STATO ---------- */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: white; font-weight: 600; }
+.badge-giallo { background: var(--giallo); }
+.badge-verde { background: var(--verde); }
+.badge-rosso { background: var(--rosso); }
+
+/* ---------- TABELLE ---------- */
+table.data-table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: var(--radius); overflow: hidden; }
+table.data-table th, table.data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; text-align: left; }
+table.data-table th { background: var(--tortora-light); color: var(--tortora-dark); }
+table.data-table tr:hover { background: #fbfaf7; cursor: pointer; }
+table.data-table tfoot td { font-weight: 700; background: var(--tortora-light); }
+
+.filters-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.filters-bar select { padding: 7px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+
+.alert { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+.alert-error { background: #fbe3e3; color: var(--rosso); }
+.alert-success { background: #e3f2e6; color: var(--verde); }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.tabs a { padding: 10px 18px; text-decoration: none; color: var(--text-light); font-size: 14px; border-bottom: 2px solid transparent; }
+.tabs a.active { color: var(--tortora-dark); border-bottom-color: var(--tortora-dark); font-weight: 700; }
+
+.chips-multi { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chips-multi label { display: flex; align-items: center; gap: 4px; background: var(--tortora-light); padding: 4px 8px; border-radius: 5px; font-size: 12px; margin: 0; width: auto; }
