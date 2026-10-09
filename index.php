@@ -53,6 +53,19 @@ $puoCreare = in_array($ruolo, ['admin', 'sector_manager', 'hm2i'], true);
       <h2 id="mese-corrente"></h2>
     </div>
     <div class="calendar-grid" id="calendar-grid"></div>
+
+    <div class="legenda-colori">
+      <strong>Legenda:</strong>
+      <span><i style="background:#4a8c5f"></i> Approvato</span>
+      <span><i style="background:#d6a726"></i> Da approvare</span>
+      <span><i style="background:#b04a4a"></i> Rifiutato</span>
+      <?php if (in_array($ruolo, ['admin', 'hemi'], true)): ?>
+      <span><i style="background:#2f6fd6"></i> Richiesta informazioni in attesa di risposta</span>
+      <?php endif; ?>
+      <?php if ($ruolo === 'hm2i'): ?>
+      <span><i style="background:#999999"></i> Occupato</span>
+      <?php endif; ?>
+    </div>
   </main>
 </div>
 

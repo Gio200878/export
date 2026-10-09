@@ -451,7 +451,7 @@ async function apriDettaglio(id) {
 function boxChatHtml(appId) {
   return `
     <div class="chatbox">
-      <h4>Richiedi informazioni all'ADMIN</h4>
+      <h4>Richiedi informazioni a MONACELLI ITALY</h4>
       <div class="chat-messaggi" id="chat-messaggi"></div>
       <div id="chat-errore" class="alert alert-error" style="display:none;"></div>
       <div class="chat-form">
@@ -466,10 +466,10 @@ function renderChat(messaggi, inAttesa) {
   if (!box) return;
   box.innerHTML = messaggi.length
     ? messaggi.map(m => `<div class="chat-msg ${m.mittente_ruolo === 'admin' ? 'admin' : 'mio'}">
-        <div class="chat-meta">${escHtml(m.mittente_ruolo === 'admin' ? 'ADMIN' : m.cognome + ' ' + m.nome)} - ${escHtml(m.created_at)}</div>
+        <div class="chat-meta">${escHtml(m.mittente_ruolo === 'admin' ? 'MONACELLI ITALY' : m.cognome + ' ' + m.nome)} - ${escHtml(m.created_at)}</div>
         ${escHtml(m.testo).replace(/\n/g, '<br>')}</div>`).join('')
     : '<div class="chat-vuoto">Nessun messaggio.</div>';
-  if (inAttesa) box.insertAdjacentHTML('beforeend', '<div class="chat-attesa">In attesa di risposta dall\'ADMIN</div>');
+  if (inAttesa) box.insertAdjacentHTML('beforeend', '<div class="chat-attesa">In attesa di risposta da MONACELLI ITALY</div>');
   box.scrollTop = box.scrollHeight;
 }
 
@@ -491,7 +491,7 @@ async function inviaChat(appId) {
   if (!data.ok) { err.textContent = data.error || 'Errore.'; err.style.display = 'block'; return; }
   txt.value = '';
   renderChat(data.messaggi, data.in_attesa);
-  renderCalendario(); // l'appuntamento diventa blu finché l'ADMIN non risponde
+  renderCalendario(); // l'appuntamento diventa blu finché MONACELLI ITALY non risponde
 }
 
 function chiudiModale() {

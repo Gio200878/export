@@ -39,6 +39,7 @@ function colonna_mancante(PDO $pdo, string $tabella, string $colonna): bool {
 foreach ([
     ['appuntamenti', 'salone_id', 'ALTER TABLE appuntamenti ADD COLUMN salone_id INT NULL AFTER hemi_id'],
     ['saloni', 'hm2i_id', 'ALTER TABLE saloni ADD COLUMN hm2i_id INT NULL AFTER prov'],
+    ['messaggi', 'letto', 'ALTER TABLE messaggi ADD COLUMN letto TINYINT(1) NOT NULL DEFAULT 0 AFTER testo'],
 ] as [$tab, $col, $alter]) {
     try {
         if (colonna_mancante($pdo, $tab, $col)) { $pdo->exec($alter); $eseguite++; }

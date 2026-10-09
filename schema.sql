@@ -183,6 +183,7 @@ CREATE TABLE IF NOT EXISTS messaggi (
     mittente_id INT NOT NULL,
     mittente_ruolo VARCHAR(20) NOT NULL,
     testo TEXT NOT NULL,
+    letto TINYINT(1) NOT NULL DEFAULT 0,   -- 1 = letto dal destinatario
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (appuntamento_id) REFERENCES appuntamenti(id) ON DELETE CASCADE,
     FOREIGN KEY (mittente_id) REFERENCES accounts(id) ON DELETE CASCADE,

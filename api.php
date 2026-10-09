@@ -240,6 +240,12 @@ switch ($action) {
             db()->prepare('INSERT INTO messaggi (appuntamento_id, mittente_id, mittente_ruolo, testo) VALUES (?,?,?,?)')
                 ->execute([$appId, current_user_id(), current_user_role(), $testo]);
         }
+        // Aprendo la conversazione i messaggi dell'altra parte risultano letti
+        if ($action === 'get_messaggi') {
+            $altra = current_user_role() === 'admin' ? 'hemi' : 'admin';
+            db()->prepare('UPDATE messaggi SET letto = 1 WHERE appuntamento_id = ? AND mittente_ruolo = ? AND letto = 0')
+                ->execute([$appId, $altra]);
+        }
         $stmt = db()->prepare(
             'SELECT m.id, m.mittente_ruolo, m.testo, m.created_at, a.nome, a.cognome
              FROM messaggi m JOIN accounts a ON a.id = m.mittente_id

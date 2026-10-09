@@ -295,6 +295,30 @@ const SQL_IN_ATTESA =
       COALESCE((SELECT MAX(id) FROM messaggi m WHERE m.appuntamento_id = ap.id AND m.mittente_ruolo = 'admin'), 0))";
 
 /**
+ * Numero di messaggi non letti dall'utente corrente (admin: dai HEMI; hemi: dall'admin
+ * sui propri appuntamenti). Non blocca mai la pagina se la colonna non esiste ancora.
+ */
+function messaggi_non_letti(): int {
+    try {
+        $role = current_user_role();
+        if ($role === 'admin') {
+            return (int)db()->query("SELECT COUNT(*) FROM messaggi WHERE mittente_ruolo = 'hemi' AND letto = 0")->fetchColumn();
+        }
+        if ($role === 'hemi') {
+            $stmt = db()->prepare(
+                "SELECT COUNT(*) FROM messaggi m JOIN appuntamenti ap ON ap.id = m.appuntamento_id
+                 WHERE ap.hemi_id = ? AND m.mittente_ruolo = 'admin' AND m.letto = 0"
+            );
+            $stmt->execute([current_user_id()]);
+            return (int)$stmt->fetchColumn();
+        }
+    } catch (Throwable $e) {
+        // tabella/colonna non ancora migrata: nessun bollino
+    }
+    return 0;
+}
+
+/**
  * L'utente corrente può leggere/scrivere i messaggi di questo appuntamento?
  */
 function can_chat_appuntamento(array $app): bool {
