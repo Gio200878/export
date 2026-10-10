@@ -258,13 +258,15 @@ function badge_stato_html($stato, $inAttesa = false) {
           <td><?= htmlspecialchars($sp['cognome'].' '.$sp['nome']) ?></td>
           <td><?= fmt_data_it($sp['data_inizio']) ?><?= $sp['data_fine'] !== $sp['data_inizio'] ? ' - ' . fmt_data_it($sp['data_fine']) : '' ?></td>
           <td><?= ($sp['ora_inizio'] !== null && $sp['ora_fine'] !== null) ? substr($sp['ora_inizio'],0,5).'-'.substr($sp['ora_fine'],0,5) : 'Giorni interi' ?></td>
-          <td><?= htmlspecialchars($sp['motivo'] ?? '') ?></td>
+          <td><?= htmlspecialchars($sp['motivo'] ?? '') ?><?= !empty($sp['evento_uid']) ? ' <span class="badge" style="background:#7b5ea7;">automatica</span>' : '' ?></td>
           <td>
+            <?php if (empty($sp['evento_uid'])): ?>
             <form method="post" action="appuntamenti_admin.php#sospensioni" style="display:inline;" onsubmit="return confirm('Eliminare questa sospensione?');">
               <input type="hidden" name="azione" value="sospensione_elimina">
               <input type="hidden" name="id" value="<?= $sp['id'] ?>">
               <button class="btn btn-sm btn-reject" type="submit">Elimina</button>
             </form>
+            <?php endif; ?>
           </td>
         </tr>
       <?php endforeach; ?>

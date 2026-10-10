@@ -143,6 +143,56 @@ function gcal_parse_ics(string $ics, string $dal, string $fino): array {
     return $out;
 }
 
+/** Minuscolo, senza accenti né punteggiatura, con spazi singoli (per confrontare cognomi nelle note). */
+function gcal_normalizza(string $t): string {
+    $t = mb_strtolower($t, 'UTF-8');
+    $t = strtr($t, ['à' => 'a', 'á' => 'a', 'è' => 'e', 'é' => 'e', 'ì' => 'i', 'í' => 'i', 'ò' => 'o', 'ó' => 'o', 'ù' => 'u', 'ú' => 'u', 'ç' => 'c', 'ñ' => 'n']);
+    return trim(preg_replace('/[^a-z0-9]+/', ' ', $t));
+}
+
+/**
+ * Restituisce gli ID degli HEMI il cui cognome compare (come parola/e intera) nel testo.
+ * $hemi: righe con id e cognome.
+ */
+function gcal_hemi_citati(string $testo, array $hemi): array {
+    $t = ' ' . gcal_normalizza($testo) . ' ';
+    if (trim($t) === '') return [];
+    $ids = [];
+    foreach ($hemi as $h) {
+        $c = gcal_normalizza($h['cognome']);
+        if ($c !== '' && strpos($t, ' ' . $c . ' ') !== false) $ids[] = (int)$h['id'];
+    }
+    return $ids;
+}
+
+/**
+ * Blocca la disponibilità degli HEMI citati per cognome nelle note degli eventi: crea sospensioni
+ * a giornata intera (evento_uid valorizzato) per tutti i giorni dell'evento. Vengono ricalcolate
+ * a ogni sincronizzazione, quindi seguono modifiche e cancellazioni dell'evento su Google.
+ * Ritorna il numero di sospensioni create.
+ */
+function gcal_blocca_hemi(array $eventi): int {
+    $pdo = db();
+    $hemi = $pdo->query("SELECT id, cognome FROM accounts WHERE ruolo = 'hemi' AND attivo = 1")->fetchAll();
+    $pdo->beginTransaction();
+    try {
+        $pdo->exec('DELETE FROM hemi_sospensioni WHERE evento_uid IS NOT NULL');
+        $ins = $pdo->prepare('INSERT INTO hemi_sospensioni (hemi_id, data_inizio, data_fine, ora_inizio, ora_fine, motivo, evento_uid) VALUES (?,?,?,NULL,NULL,?,?)');
+        $n = 0;
+        foreach ($eventi as $e) {
+            foreach (gcal_hemi_citati($e['descrizione'] ?? '', $hemi) as $hemiId) {
+                $ins->execute([$hemiId, $e['data_inizio'], $e['data_fine'], mb_substr('Corso: ' . $e['titolo'], 0, 255), $e['uid']]);
+                $n++;
+            }
+        }
+        $pdo->commit();
+        return $n;
+    } catch (Throwable $ex) {
+        $pdo->rollBack();
+        throw $ex;
+    }
+}
+
 /**
  * Allinea la tabella eventi_google con il calendario: inserisce/aggiorna gli eventi dal GCAL_DAL
  * in poi e rimuove quelli cancellati su Google. Ritorna [ok, messaggio].
@@ -180,7 +230,10 @@ function gcal_sync(): array {
         $pdo->rollBack();
         return [false, 'Errore durante la sincronizzazione: ' . $e->getMessage()];
     }
-    return [true, count($eventi) . ' eventi sincronizzati.'];
+    // Blocco automatico degli HEMI citati nelle note (non deve mai far fallire la sincronizzazione)
+    $blocchi = 0;
+    try { $blocchi = gcal_blocca_hemi($eventi); } catch (Throwable $e) { /* colonna evento_uid non ancora migrata */ }
+    return [true, count($eventi) . ' eventi sincronizzati' . ($blocchi ? ", $blocchi blocchi HEMI creati dalle note" : '') . '.'];
 }
 
 /** Sincronizza solo se l'ultimo tentativo è più vecchio di GCAL_SYNC_MINUTI. Non solleva mai errori. */

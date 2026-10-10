@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS hemi_sospensioni (
     ora_inizio TIME NULL,
     ora_fine TIME NULL,
     motivo VARCHAR(255) NULL,
+    evento_uid VARCHAR(190) NULL,          -- valorizzato = sospensione automatica da evento Google Calendar
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (hemi_id) REFERENCES accounts(id) ON DELETE CASCADE,
     INDEX idx_hemi_date (hemi_id, data_inizio, data_fine)

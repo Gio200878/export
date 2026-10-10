@@ -94,3 +94,4 @@ In `config.php`, imposta `WA_ENABLED` a `true` e inserisci le credenziali Meta C
 - Facoltativo: per un aggiornamento anche senza accessi, definisci in `config.php` `GCAL_SYNC_TOKEN` e programma un cron su `gcal_sync.php?token=...`.
 - Il calendario deve restare **pubblico** (impostazione "Rendi disponibile al pubblico"). Per cambiare calendario definisci `GCAL_ICS_URL` in `config.php`.
 - Aggiornamento: ricarica i file ed esegui di nuovo `install.php` (crea le tabelle `eventi_google`/`app_meta` e fa la prima importazione).
+- **Blocco automatico HEMI dalle note:** se nelle note (descrizione) di un evento compare il cognome di un HEMI (es. "educator Cavinato e Neli"), la sua disponibilità viene bloccata per tutte le giornate dell'evento (sospensioni "automatica" in Gestione Appuntamenti, ricalcolate a ogni sincronizzazione). Il cognome nell'account HEMI deve coincidere con quello scritto nelle note.
