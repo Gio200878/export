@@ -8,6 +8,7 @@ let opzioniCache = { aree: [], zone: [] };
 let hm2iCache = [];
 let appuntamentiCache = [];
 let saloniCache = [];
+let eventiGoogleCache = [];
 
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 const GIORNI = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
@@ -21,6 +22,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function bindNavigazione() {
+  const btnSync = document.getElementById('btn-gcal-sync');
+  if (btnSync) btnSync.addEventListener('click', async () => {
+    btnSync.disabled = true;
+    const res = await fetch('api.php?action=gcal_sync');
+    const d = await res.json();
+    btnSync.disabled = false;
+    alert(d.ok ? d.messaggio : (d.error || 'Errore di sincronizzazione.'));
+    renderCalendario();
+  });
   document.getElementById('btn-prev').addEventListener('click', () => {
     vistaData.setMonth(vistaData.getMonth() - 1);
     renderCalendario();
@@ -112,6 +122,8 @@ async function renderCalendario() {
   const res = await fetch('api.php?' + params.toString());
   const data = await res.json();
   appuntamentiCache = data.ok ? data.appuntamenti : [];
+  // Gli eventi Google sono generali: si nascondono quando è attivo un filtro su HM2I/area/HEMI/zona/stato
+  eventiGoogleCache = (data.ok && Object.keys(filtri).length === 0) ? (data.eventi_google || []) : [];
 
   const grid = document.getElementById('calendar-grid');
   grid.innerHTML = '';
@@ -131,6 +143,16 @@ async function renderCalendario() {
     const dayEl = document.createElement('div');
     dayEl.className = 'calendar-day' + (isOtherMonth ? ' other-month' : '') + (iso === oggiISO ? ' today' : '');
     dayEl.innerHTML = `<div class="day-number">${cursor.getDate()}</div>`;
+
+    eventiGoogleCache.filter(e => e.data_inizio <= iso && e.data_fine >= iso).forEach(e => {
+      const chip = document.createElement('span');
+      chip.className = 'appt-chip evento-google';
+      chip.style.background = '#7b5ea7';
+      chip.textContent = (e.ora_inizio && e.data_inizio === iso ? e.ora_inizio + ' ' : '') + e.titolo;
+      chip.title = 'Google Calendar: ' + e.titolo;
+      chip.addEventListener('click', (ev) => { ev.stopPropagation(); apriEventoGoogle(e.id); });
+      dayEl.appendChild(chip);
+    });
 
     const apptsGiorno = appuntamentiCache.filter(a => a.data_appuntamento === iso);
     apptsGiorno.forEach(a => {
@@ -152,6 +174,25 @@ async function renderCalendario() {
     grid.appendChild(dayEl);
     cursor.setDate(cursor.getDate() + 1);
   }
+}
+
+// ---------------------------------------------------------
+// MODALE: evento Google Calendar (sola lettura)
+// ---------------------------------------------------------
+function apriEventoGoogle(id) {
+  const e = eventiGoogleCache.find(x => String(x.id) === String(id));
+  if (!e) return;
+  const fmt = d => d.split('-').reverse().join('/');
+  const quando = e.data_inizio === e.data_fine ? fmt(e.data_inizio) : fmt(e.data_inizio) + ' - ' + fmt(e.data_fine);
+  const ore = e.ora_inizio ? ` dalle ${escHtml(e.ora_inizio)}${e.ora_fine ? ' alle ' + escHtml(e.ora_fine) : ''}` : '';
+  document.getElementById('modal-title').textContent = 'Evento Google Calendar';
+  document.getElementById('modal-body').innerHTML = `
+    <p><strong>${escHtml(e.titolo)}</strong></p>
+    <p>${escHtml(quando)}${ore}</p>
+    ${e.luogo ? `<p>Luogo: ${escHtml(e.luogo)}</p>` : ''}
+    ${e.descrizione ? `<p>${escHtml(e.descrizione).replace(/\n/g, '<br>')}</p>` : ''}
+    <div class="modal-actions"><button type="button" class="btn btn-secondary" onclick="chiudiModale()">Chiudi</button></div>`;
+  document.getElementById('modal-appuntamento').classList.add('open');
 }
 
 // ---------------------------------------------------------

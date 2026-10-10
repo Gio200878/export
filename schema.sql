@@ -191,6 +191,28 @@ CREATE TABLE IF NOT EXISTS messaggi (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
+-- EVENTI GOOGLE CALENDAR (sincronizzati da lib/gcal.php, sola lettura nell'agenda)
+-- data_fine inclusiva; ora_inizio/ora_fine NULL = giornata intera
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS eventi_google (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    uid VARCHAR(190) NOT NULL UNIQUE,
+    titolo VARCHAR(255) NOT NULL,
+    descrizione TEXT NULL,
+    luogo VARCHAR(255) NULL,
+    data_inizio DATE NOT NULL,
+    data_fine DATE NOT NULL,
+    ora_inizio VARCHAR(5) NULL,
+    ora_fine VARCHAR(5) NULL,
+    INDEX idx_date (data_inizio, data_fine)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS app_meta (
+    chiave VARCHAR(50) PRIMARY KEY,
+    valore VARCHAR(255) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
 -- LOG NOTIFICHE WHATSAPP (facoltativo)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS wa_log (

@@ -5,6 +5,7 @@
  * Dopo l'uso, elimina questo file dal server per sicurezza.
  */
 require_once __DIR__ . '/lib/db.php';
+require_once __DIR__ . '/lib/gcal.php';
 
 $sqlFile = __DIR__ . '/schema.sql';
 if (!file_exists($sqlFile)) {
@@ -109,6 +110,16 @@ try {
 } catch (PDOException $e) {
     $errori[] = 'Saloni: ' . $e->getMessage();
 }
+
+// --- Prima sincronizzazione eventi Google Calendar (dal 1/10/2026 in poi) ---
+$gcalEsito = '';
+try {
+    [$gcalOk, $gcalMsg] = gcal_sync();
+    $gcalEsito = $gcalMsg;
+    if (!$gcalOk) $errori[] = 'Google Calendar: ' . $gcalMsg;
+} catch (Throwable $e) {
+    $errori[] = 'Google Calendar: ' . $e->getMessage();
+}
 ?>
 <!DOCTYPE html>
 <html lang="it">
@@ -117,6 +128,7 @@ try {
 <h1>Installazione database</h1>
 <p>Query eseguite con successo: <strong><?= $eseguite ?></strong></p>
 <p>HM2I importati: <strong><?= $hm2iCreati ?></strong> - account HM2I creati: <strong><?= $accountCreati ?></strong> (password di default: <code>Monacelli26</code>)</p>
+<p>Google Calendar: <strong><?= htmlspecialchars($gcalEsito) ?></strong></p>
 <p>Saloni importati: <strong><?= $saloniImportati ?></strong></p>
 <?php if ($errori): ?>
   <h3 style="color:red;">Errori:</h3>

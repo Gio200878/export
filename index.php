@@ -33,6 +33,7 @@ $puoCreare = in_array($ruolo, ['admin', 'sector_manager', 'hm2i'], true);
     <select id="filtro-zona"><option value="">Tutte</option></select>
 
     <?php if ($ruolo === 'admin'): ?>
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-gcal-sync" style="margin-top:14px;width:100%;">Sincronizza Google Calendar</button>
     <label>Stato</label>
     <select id="filtro-stato">
       <option value="">Tutti</option>
@@ -62,6 +63,7 @@ $puoCreare = in_array($ruolo, ['admin', 'sector_manager', 'hm2i'], true);
       <?php if (in_array($ruolo, ['admin', 'hemi'], true)): ?>
       <span><i style="background:#2f6fd6"></i> Richiesta informazioni in attesa di risposta</span>
       <?php endif; ?>
+      <span><i style="background:#7b5ea7"></i> Evento Google Calendar (Monacelli Academy)</span>
       <?php if ($ruolo === 'hm2i'): ?>
       <span><i style="background:#999999"></i> Occupato</span>
       <?php endif; ?>

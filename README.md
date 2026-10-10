@@ -87,3 +87,10 @@ In `config.php`, imposta `WA_ENABLED` a `true` e inserisci le credenziali Meta C
 - **Saloni**: colonna `saloni.hm2i_id`. Nell'inserimento appuntamenti ogni HM2I vede solo i propri saloni (admin/sector manager: quelli dell'HM2I selezionato).
 - **HEMI**: vede solo i propri appuntamenti, in chiaro. Dal dettaglio può scrivere all'ADMIN; l'appuntamento è **blu** (calendario e Gestione Appuntamenti) finché l'ADMIN non risponde, poi torna verde/giallo/rosso.
 - Aggiornamento: ricarica i file ed esegui di nuovo `install.php` (idempotente), poi eliminalo.
+
+## Eventi Google Calendar (Monacelli Academy)
+- Gli eventi del calendario Google (feed ICS pubblico, vedi `lib/gcal.php`) compaiono nell'Agenda in viola, in sola lettura, **dal 1/10/2026 in poi** (`GCAL_DAL`).
+- Sincronizzazione automatica: ogni volta che l'agenda viene aperta e l'ultimo controllo ha più di 10 minuti (`GCAL_SYNC_MINUTI`) gli eventi nuovi/modificati/cancellati vengono allineati. L'admin ha anche il pulsante "Sincronizza Google Calendar" nell'Agenda.
+- Facoltativo: per un aggiornamento anche senza accessi, definisci in `config.php` `GCAL_SYNC_TOKEN` e programma un cron su `gcal_sync.php?token=...`.
+- Il calendario deve restare **pubblico** (impostazione "Rendi disponibile al pubblico"). Per cambiare calendario definisci `GCAL_ICS_URL` in `config.php`.
+- Aggiornamento: ricarica i file ed esegui di nuovo `install.php` (crea le tabelle `eventi_google`/`app_meta` e fa la prima importazione).

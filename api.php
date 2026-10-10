@@ -2,6 +2,7 @@
 require_once __DIR__ . '/lib/auth.php';
 require_once __DIR__ . '/lib/logic.php';
 require_once __DIR__ . '/lib/whatsapp.php';
+require_once __DIR__ . '/lib/gcal.php';
 
 header('Content-Type: application/json; charset=utf-8');
 auth_check();
@@ -39,7 +40,16 @@ switch ($action) {
         foreach ($rows as &$r) {
             $r['colore'] = $r['_offuscato'] ? '#999999' : (!empty($r['in_attesa']) ? COLORE_IN_ATTESA : colore_stato($r['stato']));
         }
-        json_out(['ok' => true, 'appuntamenti' => $rows]);
+        // Eventi del calendario Google: aggiornamento automatico se l'ultimo controllo è scaduto
+        gcal_sync_se_scaduta();
+        json_out(['ok' => true, 'appuntamenti' => $rows, 'eventi_google' => gcal_eventi($inizio, $fine)]);
+        break;
+
+    // Admin: sincronizzazione immediata del calendario Google
+    case 'gcal_sync':
+        if (current_user_role() !== 'admin') json_out(['ok' => false, 'error' => 'Solo admin.'], 403);
+        [$okSync, $msgSync] = gcal_sync();
+        json_out(['ok' => $okSync, 'messaggio' => $msgSync, 'error' => $okSync ? null : $msgSync]);
         break;
 
     // -----------------------------------------------------------
